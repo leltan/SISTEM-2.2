@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICO 2.2 | Gestão Integrada</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-screen" class="d-flex align-items-center justify-content-center">
+        <div class="login-overlay"></div>
+        <div class="card login-card p-4 fade-in-up">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-primary">SICO <span class="text-dark">2.2</span></h2>
+                <h6 class="text-uppercase text-muted ls-2">Acesso Restrito</h6>
+            </div>
+            <form id="form-login">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Usuário</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class='bx bxs-user'></i></span>
+                        <input type="text" id="login-usuario" class="form-control" placeholder="Digite seu usuário..." required>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">Senha</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class='bx bxs-lock-alt'></i></span>
+                        <input type="password" id="login-senha" class="form-control" placeholder="Digite sua senha..." required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">ENTRAR</button>
+                <div id="login-erro" class="text-danger small text-center mt-2 d-none">Usuário ou senha inválidos.</div>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="d-none">
+        <nav class="sidebar p-3 d-flex flex-column justify-content-between">
+            <div>
+                <div class="brand mb-5">
+                    <h4 class="text-white fw-bold">SICO <span class="text-primary">2.2</span></h4>
+                    <small class="text-white-50" id="user-display">Bem-vindo(a)</small>
+                </div>
+                <ul class="nav flex-column gap-2">
+                    <li class="nav-item"><a href="#" class="nav-link active"><i class='bx bxs-dashboard'></i> Visão Geral</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link"><i class='bx bxs-bus'></i> Frota & Linhas</a></li>
+                </ul>
+            </div>
+            <div>
+                <a href="#" onclick="logout()" class="nav-link text-danger fw-bold"><i class='bx bx-log-out'></i> Sair do Sistema</a>
+            </div>
+        </nav>
+
+        <main class="content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold text-dark mb-0">Controle Operacional</h4>
+                    <small class="text-muted">Fervima & Pirajuçara</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="exportarCSV()"><i class='bx bxs-download'></i> Relatório CSV</button>
+                    <button class="btn btn-success btn-sm" onclick="gerarRelatorioZap()"><i class='bx bxl-whatsapp'></i> Copiar Resumo</button>
+                    <button class="btn btn-primary btn-sm shadow" data-bs-toggle="modal" data-bs-target="#modalOcorrencia" onclick="prepararNovaOcorrencia()"><i class='bx bx-plus-circle'></i> Nova Ocorrência</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm p-3 border-start border-4 border-primary">
+                        <small class="text-muted fw-bold">TOTAL HOJE</small>
+                        <h3 class="fw-bold mb-0" id="kpi-total">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm p-3 border-start border-4 border-warning">
+                        <small class="text-muted fw-bold">PENDENTES</small>
+                        <h3 class="fw-bold mb-0" id="kpi-pendentes">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm p-2 h-100 d-flex justify-content-center">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-2">
+                                <input type="text" id="filtro-prefixo" class="form-control form-control-sm" placeholder="Prefixo...">
+                            </div>
+                            <div class="col-2">
+                                <input type="text" id="filtro-linha" class="form-control form-control-sm" placeholder="Linha...">
+                            </div>
+                            <div class="col-3">
+                                <select id="filtro-tipo" class="form-select form-select-sm">
+                                    <option value="">Todos Tipos</option>
+                                    <option value="Mecânica">Falha Mecânica</option>
+                                    <option value="Colisão">Colisão</option>
+                                    <option value="Desvio">Desvio</option>
+                                    <option value="Atraso">Atraso</option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <select id="filtro-status" class="form-select form-select-sm">
+                                    <option value="">Status...</option>
+                                    <option value="Pendente">Pendente</option>
+                                    <option value="Finalizada">Finalizada</option>
+                                </select>
+                            </div>
+                            <div class="col-2">
+                                <button class="btn btn-secondary btn-sm w-100" onclick="aplicarFiltros()"><i class='bx bx-search'></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0 custom-table">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Protocolo</th>
+                                <th>Início</th>
+                                <th>Carro / Linha</th>
+                                <th>Tipo</th>
+                                <th>Local</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal fade" id="modalOcorrencia" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="titulo-modal-ocorrencia"><i class='bx bx-edit'></i> Nova Ocorrência</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <form id="form-ocorrencia">
+                        <input type="hidden" id="ocorrencia-id" value="">
+                        
+                        <div class="card p-3 mb-3 border-0 shadow-sm">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="fw-bold small text-primary">QUAL O TIPO DA OCORRÊNCIA?</label>
+                                    <select id="tipo" class="form-select form-select-lg fw-bold" required onchange="ajustarFormulario()">
+                                        <option value="" selected disabled>-- Selecione --</option>
+                                        <option value="Mecânica">Falha Mecânica (SOS)</option>
+                                        <option value="Desvio">Desvio de Itinerário</option>
+                                        <option value="Colisão">Colisão / Acidente</option>
+                                        <option value="Atraso">Atraso de Partida</option>
+                                        <option value="Segurança">Segurança / Vandalismo</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="bloco-padrao" class="card p-3 mb-3 border-0 shadow-sm d-none">
+                            <h6 class="text-muted fw-bold border-bottom pb-2 mb-3">Identificação do Veículo</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="fw-bold small">Prefixo *</label>
+                                    <input type="text" id="prefixo" class="form-control" placeholder="Ex: 890" onblur="verificarEmpresa()">
+                                    <div id="empresa-badge" class="badge bg-secondary mt-1 w-100">---</div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="fw-bold small">Linha *</label>
+                                    <select id="linha" class="form-select" disabled>
+                                        <option value="">Digite o Prefixo...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="form-mecanica" class="d-none animate-fade">
+                            <div class="card p-3 mb-3 border-0 shadow-sm border-start border-4 border-warning">
+                                <h6 class="text-warning fw-bold border-bottom pb-2 mb-3"><i class='bx bxs-wrench'></i> Dados da Falha Mecânica</h6>
+                                
+                                <div class="row g-3 mb-3 bg-light p-2 rounded mx-1">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Data Início *</label>
+                                        <input type="date" id="mec-data-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Hora Início *</label>
+                                        <input type="time" id="mec-hora-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Data Término</label>
+                                        <input type="date" id="mec-data-fim" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Hora Término</label>
+                                        <input type="time" id="mec-hora-fim" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Município *</label>
+                                        <select id="mec-municipio" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Embu das Artes">Embu das Artes</option>
+                                            <option value="Taboão da Serra">Taboão da Serra</option>
+                                            <option value="Itapecerica">Itapecerica da Serra</option>
+                                            <option value="São Paulo">São Paulo</option>
+                                            <option value="Cotia">Cotia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Local da Ocorrência *</label>
+                                        <input type="text" id="mec-local" class="form-control" placeholder="Av. Principal, altura do nº 500">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Defeito do Veículo *</label>
+                                    <input type="text" id="mec-defeito" class="form-control" placeholder="Ex: Mangueira estourada, Freio travado...">
+                                </div>
+
+                                <h6 class="text-danger fw-bold mt-4 border-bottom pb-1 small">PARTIDAS COMPROMETIDAS</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-12">
+                                        <label class="fw-bold small">Partida Interrompida (Local/Hora)</label>
+                                        <input type="text" id="mec-partida-interrompida" class="form-control form-control-sm" placeholder="Ex: 08:10 Volta">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small">Canceladas IDA</label>
+                                        <input type="text" id="mec-canceladas-ida" class="form-control form-control-sm" placeholder="Ex: 10:10, 12:10">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small">Canceladas VOLTA</label>
+                                        <input type="text" id="mec-canceladas-volta" class="form-control form-control-sm" placeholder="Ex: 13:10, 15:15">
+                                    </div>
+                                </div>
+
+                                <div class="bg-warning-subtle p-3 rounded border border-warning">
+                                    <label class="fw-bold small text-dark mb-2">PROVIDÊNCIA ADOTADA *</label>
+                                    <select id="mec-providencia" class="form-select mb-3" onchange="verificarProvidencia()">
+                                        <option value="">Selecione...</option>
+                                        <option value="Não Houve - Término de Tabela">Não houve - Término de Tabela</option>
+                                        <option value="Reassumiu">Reassumiu na linha</option>
+                                        <option value="Substituido">Substituído (Troca de carro)</option>
+                                    </select>
+
+                                    <div id="extra-reassumiu" class="row g-2 d-none">
+                                        <div class="col-6"><input type="text" id="reassumiu-sentido" class="form-control form-control-sm" placeholder="Sentido (Ida/Volta)"></div>
+                                        <div class="col-6"><input type="time" id="reassumiu-horario" class="form-control form-control-sm"></div>
+                                    </div>
+
+                                    <div id="extra-substituido" class="row g-2 d-none">
+                                        <div class="col-4"><input type="text" id="subst-prefixo" class="form-control form-control-sm fw-bold" placeholder="Prefixo Reserva"></div>
+                                        <div class="col-4"><input type="text" id="subst-sentido" class="form-control form-control-sm" placeholder="Sentido"></div>
+                                        <div class="col-4"><input type="time" id="subst-horario" class="form-control form-control-sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="form-desvio" class="d-none animate-fade">
+                            <div class="card p-3 mb-3 border-0 shadow-sm border-start border-4 border-info">
+                                <h6 class="text-info fw-bold border-bottom pb-2 mb-3"><i class='bx bxs-directions'></i> Dados do Desvio de Itinerário</h6>
+                                
+                                <div class="row g-3 mb-3 bg-light p-2 rounded mx-1">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Data Início *</label>
+                                        <input type="date" id="desv-data-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Hora Início *</label>
+                                        <input type="time" id="desv-hora-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Data Término</label>
+                                        <input type="date" id="desv-data-fim" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Hora Término</label>
+                                        <input type="time" id="desv-hora-fim" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Município *</label>
+                                        <select id="desv-municipio" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Embu das Artes">Embu das Artes</option>
+                                            <option value="Taboão da Serra">Taboão da Serra</option>
+                                            <option value="Itapecerica">Itapecerica da Serra</option>
+                                            <option value="São Paulo">São Paulo</option>
+                                            <option value="Cotia">Cotia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Local do Bloqueio *</label>
+                                        <input type="text" id="desv-local" class="form-control" placeholder="Ex: Av. Elias Yazbek (Centro)">
+                                    </div>
+                                </div>
+
+                                <div class="card p-3 bg-light border-0 mb-3">
+                                    <label class="fw-bold small mb-2 text-primary">LINHAS AFETADAS (Marque as opções):</label>
+                                    <div id="container-linhas-check" class="row g-2 small">
+                                        </div>
+                                    
+                                    <label class="fw-bold small mt-3 mb-1 text-primary">CARROS AFETADOS (Digite os prefixos):</label>
+                                    <input type="text" id="desv-carros" class="form-control" placeholder="Ex: 723, 721, 898, 902...">
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Sentido *</label>
+                                        <select id="desv-sentido" class="form-select">
+                                            <option value="Ida">Ida</option>
+                                            <option value="Volta">Volta</option>
+                                            <option value="Ambos">Ambos os Sentidos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Motivo do Desvio *</label>
+                                        <input type="text" id="desv-motivo" class="form-control" placeholder="Ex: Queda de árvore, Feira livre...">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Pontos sem Atendimento</label>
+                                    <input type="text" id="desv-pontos-sem" class="form-control" placeholder="Ex: Pontos do centro e da praça...">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Desvio Realizado *</label>
+                                    <textarea id="desv-rota" class="form-control" rows="2" placeholder="Descreva por onde os ônibus estão passando..."></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Observação (Opcional)</label>
+                                    <textarea id="desv-obs" class="form-control" rows="1"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="form-colisao" class="d-none animate-fade">
+                            <div class="card p-3 mb-3 border-0 shadow-sm border-start border-4 border-danger">
+                                <h6 class="text-danger fw-bold border-bottom pb-2 mb-3"><i class='bx bxs-car-crash'></i> Dados da Colisão / Acidente</h6>
+                                
+                                <div class="row g-3 mb-3 bg-light p-2 rounded mx-1">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Data Início *</label>
+                                        <input type="date" id="col-data-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Hora Início *</label>
+                                        <input type="time" id="col-hora-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Data Término</label>
+                                        <input type="date" id="col-data-fim" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Hora Término</label>
+                                        <input type="time" id="col-hora-fim" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Município *</label>
+                                        <select id="col-municipio" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Embu das Artes">Embu das Artes</option>
+                                            <option value="Taboão da Serra">Taboão da Serra</option>
+                                            <option value="Itapecerica">Itapecerica da Serra</option>
+                                            <option value="São Paulo">São Paulo</option>
+                                            <option value="Cotia">Cotia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Local da Ocorrência *</label>
+                                        <input type="text" id="col-local" class="form-control" placeholder="Av. Principal, altura do nº 500">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-secondary fw-bold mt-4 border-bottom pb-1 small">DADOS DO CONDUTOR E COLETIVO</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Nome do Condutor *</label>
+                                        <input type="text" id="col-condutor-nome" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Matrícula *</label>
+                                        <input type="text" id="col-condutor-matricula" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="fw-bold small">Avaria no Nosso Coletivo *</label>
+                                        <input type="text" id="col-avaria-coletivo" class="form-control form-control-sm" placeholder="Ex: Para-choque dianteiro amassado, farol quebrado...">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-danger fw-bold mt-4 border-bottom pb-1 small">PARTIDAS COMPROMETIDAS E PROVIDÊNCIA</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-12">
+                                        <label class="fw-bold small">Partida Interrompida</label>
+                                        <input type="text" id="col-partida-interrompida" class="form-control form-control-sm" placeholder="Ex: 08:10 Volta">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small">Canceladas IDA</label>
+                                        <input type="text" id="col-canceladas-ida" class="form-control form-control-sm" placeholder="Ex: 10:10, 12:10">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small">Canceladas VOLTA</label>
+                                        <input type="text" id="col-canceladas-volta" class="form-control form-control-sm" placeholder="Ex: 13:10, 15:15">
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-danger-subtle p-3 rounded border border-danger mb-4">
+                                    <label class="fw-bold small text-dark mb-2">PROVIDÊNCIA ADOTADA *</label>
+                                    <select id="col-providencia" class="form-select mb-3" onchange="verificarProvidenciaColisao()">
+                                        <option value="">Selecione...</option>
+                                        <option value="Não Houve - Término de Tabela">Não houve - Término de Tabela</option>
+                                        <option value="Reassumiu">Reassumiu na linha</option>
+                                        <option value="Substituido">Substituído (Troca de carro)</option>
+                                    </select>
+
+                                    <div id="col-extra-reassumiu" class="row g-2 d-none">
+                                        <div class="col-6"><input type="text" id="col-reassumiu-sentido" class="form-control form-control-sm" placeholder="Sentido (Ida/Volta)"></div>
+                                        <div class="col-6"><input type="time" id="col-reassumiu-horario" class="form-control form-control-sm"></div>
+                                    </div>
+
+                                    <div id="col-extra-substituido" class="row g-2 d-none">
+                                        <div class="col-4"><input type="text" id="col-subst-prefixo" class="form-control form-control-sm fw-bold" placeholder="Prefixo Reserva"></div>
+                                        <div class="col-4"><input type="text" id="col-subst-sentido" class="form-control form-control-sm" placeholder="Sentido"></div>
+                                        <div class="col-4"><input type="time" id="col-subst-horario" class="form-control form-control-sm"></div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 bg-light p-2 rounded border">
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small text-primary mb-1">Houve envolvimento de terceiro?</label>
+                                        <select id="col-houve-terceiro" class="form-select" onchange="toggleTerceiro()">
+                                            <option value="Nao">Não (Colisão com objeto fixo/sem terceiro)</option>
+                                            <option value="Sim">Sim</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small text-danger mb-1">Houve vítima(s)?</label>
+                                        <select id="col-houve-vitima" class="form-select border-danger" onchange="toggleVitima()">
+                                            <option value="Nao">Não</option>
+                                            <option value="Sim">Sim</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="bloco-terceiro" class="d-none bg-light p-3 rounded mb-3 border">
+                                    <h6 class="text-primary fw-bold border-bottom pb-1 small">DADOS DO TERCEIRO</h6>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-4"><label class="fw-bold small">Modelo Veículo</label><input type="text" id="col-terc-modelo" class="form-control form-control-sm"></div>
+                                        <div class="col-md-4"><label class="fw-bold small">Cor</label><input type="text" id="col-terc-cor" class="form-control form-control-sm"></div>
+                                        <div class="col-md-4"><label class="fw-bold small">Placa</label><input type="text" id="col-terc-placa" class="form-control form-control-sm text-uppercase"></div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6"><label class="fw-bold small">Nome do Terceiro</label><input type="text" id="col-terc-nome" class="form-control form-control-sm"></div>
+                                        <div class="col-md-6"><label class="fw-bold small">CPF/RG/CNH</label><input type="text" id="col-terc-doc" class="form-control form-control-sm"></div>
+                                        <div class="col-md-6"><label class="fw-bold small">Telefone</label><input type="text" id="col-terc-tel" class="form-control form-control-sm"></div>
+                                        <div class="col-md-6"><label class="fw-bold small">Endereço</label><input type="text" id="col-terc-end" class="form-control form-control-sm"></div>
+                                    </div>
+                                </div>
+
+                                <div id="bloco-vitimas" class="d-none bg-danger-subtle p-3 rounded mb-3 border border-danger">
+                                    <h6 class="text-danger fw-bold border-bottom border-danger pb-1 small d-flex justify-content-between align-items-center">
+                                        DADOS DAS VÍTIMAS
+                                        <button type="button" class="btn btn-sm btn-danger py-0" onclick="adicionarVitima()"><i class='bx bx-plus'></i> Mais</button>
+                                    </h6>
+                                    <div id="container-vitimas">
+                                        <div class="vitima-item bg-white p-2 rounded mb-2 border row g-2">
+                                            <div class="col-md-6"><label class="fw-bold small">Nome</label><input type="text" class="form-control form-control-sm vit-nome"></div>
+                                            <div class="col-md-3"><label class="fw-bold small">CPF/RG</label><input type="text" class="form-control form-control-sm vit-doc"></div>
+                                            <div class="col-md-3"><label class="fw-bold small">Idade</label><input type="number" class="form-control form-control-sm vit-idade"></div>
+                                            <div class="col-md-6"><label class="fw-bold small">Estado da Vítima</label><input type="text" class="form-control form-control-sm vit-estado" placeholder="Ex: Leve, Grave, Óbito..."></div>
+                                            <div class="col-md-6"><label class="fw-bold small">Socorrida Para</label><input type="text" class="form-control form-control-sm vit-socorro" placeholder="Ex: PS Central, Hospital Geral..."></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6 class="text-dark fw-bold mt-4 border-bottom pb-1 small">AUTORIDADES E REGISTRO</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">GCM (Prefixo - Resp.)</label>
+                                        <input type="text" id="col-gcm" class="form-control form-control-sm" placeholder="Ex: VTR 12 - GCM Silva">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">PM (Prefixo - Resp.)</label>
+                                        <input type="text" id="col-pm" class="form-control form-control-sm" placeholder="Ex: M-36012 - Sd Costa">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">SAMU (Prefixo - Resp.)</label>
+                                        <input type="text" id="col-samu" class="form-control form-control-sm" placeholder="Ex: USA 01 - Dr. Paulo">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="fw-bold small text-primary">Nº do Boletim de Ocorrência Policial</label>
+                                        <input type="text" id="col-bo" class="form-control fw-bold" placeholder="Ex: XX1234/2026">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div id="form-atraso" class="d-none animate-fade">
+                            <div class="card p-3 mb-3 border-0 shadow-sm border-start border-4 border-secondary">
+                                <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3"><i class='bx bx-time-five'></i> Dados do Atraso de Partida</h6>
+                                
+                                <div class="row g-3 mb-3 bg-light p-2 rounded mx-1">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Data Início *</label>
+                                        <input type="date" id="atr-data-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Hora Início *</label>
+                                        <input type="time" id="atr-hora-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Data Término</label>
+                                        <input type="date" id="atr-data-fim" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small text-muted">Hora Término</label>
+                                        <input type="time" id="atr-hora-fim" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Município *</label>
+                                        <select id="atr-municipio" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Embu das Artes">Embu das Artes</option>
+                                            <option value="Taboão da Serra">Taboão da Serra</option>
+                                            <option value="Itapecerica">Itapecerica da Serra</option>
+                                            <option value="São Paulo">São Paulo</option>
+                                            <option value="Cotia">Cotia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="fw-bold small">Local da Ocorrência *</label>
+                                        <input type="text" id="atr-local" class="form-control" placeholder="Ex: Rodovia Régis Bittencourt, Km 279">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-dark fw-bold mt-4 border-bottom pb-1 small">EMPRESA E LINHA</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Empresa *</label>
+                                        <select id="atr-empresa" class="form-select" onchange="atualizarLinhasAtraso()">
+                                            <option value="">Selecione...</option>
+                                            <option value="Fervima">Fervima</option>
+                                            <option value="Pirajuçara">Pirajuçara</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="fw-bold small">Linha *</label>
+                                        <select id="atr-linha" class="form-select" disabled>
+                                            <option value="">Selecione a empresa...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Prefixo (Opcional)</label>
+                                        <input type="text" id="atr-prefixo" class="form-control" placeholder="Se for 1 carro">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-dark fw-bold mt-4 border-bottom pb-1 small">DETALHES DO ATRASO</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Maior Atraso (Minutos) *</label>
+                                        <input type="number" id="atr-minutos" class="form-control" placeholder="Ex: 45">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="fw-bold small">Sentido *</label>
+                                        <select id="atr-sentido" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Ida">Ida</option>
+                                            <option value="Volta">Volta</option>
+                                            <option value="Ambos">Ambos os Sentidos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="fw-bold small">Motivo do Atraso *</label>
+                                        <select id="atr-motivo" class="form-select">
+                                            <option value="">Selecione...</option>
+                                            <option value="Congestionamento">Congestionamento</option>
+                                            <option value="Colisão">Colisão no viário</option>
+                                            <option value="Falta de Operador">Falta de Operador</option>
+                                            <option value="Falha Mecânica">Falha Mecânica</option>
+                                            <option value="Outros">Outros</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Observação (Opcional)</label>
+                                    <textarea id="atr-obs" class="form-control" rows="2" placeholder="Detalhes adicionais sobre o atraso..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="form-generico" class="d-none">
+                            <div class="alert alert-info">Formulário em desenvolvimento...</div>
+                        </div>
+
+                        <div class="modal-footer px-0 pb-0 mt-3 border-top-0">
+                            <button type="button" class="btn btn-light text-muted" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDetalhes" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fs-6">FICHA DE OCORRÊNCIA</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="corpo-detalhes"></div>
+                <div class="modal-footer bg-light" id="admin-actions"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
