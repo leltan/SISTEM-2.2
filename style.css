@@ -2,6 +2,9 @@
     --primary-color: #0d6efd; 
     --dark-blue: #0A2558;     
     --bg-color: #F5F7FA;      
+    /* Novas Cores das Empresas */
+    --cor-fervima: #D32F2F;      /* Vermelho Sólido */
+    --cor-pirajucara: #2E7D32;   /* Verde Médio */
 }
 
 body {
@@ -34,4 +37,28 @@ body {
 
 .custom-table thead th {
     border: none; font-size: 0.85rem; text-transform: uppercase; color: #6c757d;
+}
+
+/* =========================================
+   CORES DA FROTA - ETIQUETAS E TABELA
+========================================= */
+
+/* Etiquetas do Formulário */
+.badge-fervima {
+    background-color: var(--cor-fervima) !important;
+    color: white !important;
+}
+
+.badge-pirajucara {
+    background-color: var(--cor-pirajucara) !important;
+    color: white !important;
+}
+
+/* Detalhe Sutil na Tabela Principal (Borda Lateral) */
+.linha-fervima td:first-child {
+    border-left: 5px solid var(--cor-fervima) !important;
+}
+
+.linha-pirajucara td:first-child {
+    border-left: 5px solid var(--cor-pirajucara) !important;
 }
