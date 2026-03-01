@@ -7,6 +7,11 @@ const linhasFervima = ['Circular 02', 'Circular 03', 'Circular 04', 'Circular 07
 const linhasPirajucara = ['Circular 05', 'Circular 06', 'Circular 09', 'Circular 09.1'];
 const todasLinhas = [...linhasFervima, ...linhasPirajucara];
 
+// LISTAS DE CARROS GLOBAIS PARA FACILITAR AS CORES NA TABELA
+const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
+const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
+
+
 function restaurarSessao() {
     const token = localStorage.getItem('sico_token');
     if (!token) return;
@@ -92,18 +97,15 @@ function verificarEmpresa() {
 
     selectLinha.innerHTML = '<option value="">Selecione...</option>';
     
-    // LISTAS DE CARROS ADICIONADAS AQUI PARA VALIDAÇÃO LOCAL!
-    const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
-    const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
-
+    // APLICANDO AS CORES REAIS DA FROTA AQUI!
     if (frotaFervima.includes(prefixo)) {
         badge.innerText = "FERVIMA";
-        badge.className = "badge bg-warning text-dark mt-1 w-100";
+        badge.className = "badge badge-fervima mt-1 w-100 shadow-sm";
         selectLinha.disabled = false;
         linhasFervima.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     } else if (frotaPirajucara.includes(prefixo)) {
         badge.innerText = "PIRAJUÇARA";
-        badge.className = "badge bg-primary mt-1 w-100";
+        badge.className = "badge badge-pirajucara mt-1 w-100 shadow-sm";
         selectLinha.disabled = false;
         linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     } else {
@@ -742,8 +744,16 @@ function renderizarTabela(dados) {
         let hora = item.mecHoraInicio || item.desvHoraInicio || item.colHoraInicio || item.atrHoraInicio || '--:--';
         let local = item.mecLocal || item.desvLocal || item.colLocal || item.atrLocal || '---';
 
+        // LÓGICA DA COR LATERAL NA TABELA
+        let classeLinhaEmpresa = '';
+        if (frotaFervima.includes(item.prefixo)) {
+            classeLinhaEmpresa = 'linha-fervima';
+        } else if (frotaPirajucara.includes(item.prefixo)) {
+            classeLinhaEmpresa = 'linha-pirajucara';
+        }
+
         const tr = `
-            <tr>
+            <tr class="${classeLinhaEmpresa}">
                 <td class="ps-4 fw-bold text-primary">${item.protocolo}</td>
                 <td>${hora}</td>
                 <td>
