@@ -526,23 +526,48 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Carro:</strong> ${item.prefixo}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.mecDataInicio} às ${item.mecHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.mecDataFim || '--'} às ${item.mecHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.mecLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.mecDataFim || '--/--/----'} às ${item.mecHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.mecMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.mecLocal}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Defeito:</strong> ${item.mecDefeito}</div>
-                <div class="col-12"><strong>Providência:</strong> ${item.mecProvidencia}</div>
-            </div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Impacto na Operação</h6></div>
+                <div class="col-12"><strong>Partida Interrompida?</strong> ${item.mecPartidaInterrompida || 'Não'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Ida):</strong> ${item.mecCanceladasIda || '0'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.mecCanceladasVolta || '0'}</div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
+                <div class="col-12"><strong>Ação:</strong> <span class="badge bg-secondary">${item.mecProvidencia}</span></div>
         `;
+        if (item.mecProvidencia === 'Reassumiu') {
+            html += `
+                <div class="col-6"><strong>Sentido:</strong> ${item.mecReassumiuSentido}</div>
+                <div class="col-6"><strong>Horário:</strong> ${item.mecReassumiuHorario}</div>
+            `;
+        } else if (item.mecProvidencia === 'Substituido') {
+            html += `
+                <div class="col-4"><strong>Carro Subst.:</strong> ${item.mecSubstPrefixo}</div>
+                <div class="col-4"><strong>Sentido:</strong> ${item.mecSubstSentido}</div>
+                <div class="col-4"><strong>Horário:</strong> ${item.mecSubstHorario}</div>
+            `;
+        }
+        html += `</div>`;
     } 
     else if (item.tipo === 'Desvio') {
         html += `
             <div class="row g-3">
                 <div class="col-12 text-primary fw-bold">LINHAS AFETADAS:</div>
                 <div class="col-12 bg-light p-2 small">${item.linha}</div>
+                <div class="col-12"><strong>Carros Retidos/Envolvidos:</strong> ${item.desvCarros || 'Nenhum informado'}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.desvDataInicio} às ${item.desvHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.desvDataFim || '--'} às ${item.desvHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.desvLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.desvDataFim || '--/--/----'} às ${item.desvHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.desvMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.desvLocal}</div>
+                <div class="col-6"><strong>Sentido:</strong> ${item.desvSentido || '---'}</div>
+                <div class="col-6"><strong>Pontos Desatendidos:</strong> ${item.desvPontosSem || 'Nenhum'}</div>
                 <div class="col-12"><strong>Motivo:</strong> ${item.desvMotivo}</div>
-                <div class="col-12"><strong>Rota Realizada:</strong> ${item.desvRota}</div>
+                <div class="col-12 bg-light p-2 border"><strong>Rota Realizada:</strong> ${item.desvRota}</div>
+                <div class="col-12"><strong>Observações:</strong> ${item.desvObs || 'Nenhuma observação'}</div>
             </div>
         `;
     }
@@ -552,22 +577,44 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Carro:</strong> ${item.prefixo}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.colDataInicio} às ${item.colHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.colDataFim || '--'} às ${item.colHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.colLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.colDataFim || '--/--/----'} às ${item.colHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.colMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.colLocal}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Condutor:</strong> ${item.colCondutorNome} (Mat: ${item.colCondutorMatricula})</div>
                 <div class="col-12"><strong>Avaria Coletivo:</strong> ${item.colAvariaColetivo}</div>
-                <div class="col-12"><strong>Providência:</strong> ${item.colProvidencia}</div>
-            </div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Impacto na Operação</h6></div>
+                <div class="col-12"><strong>Partida Interrompida?</strong> ${item.colPartidaInterrompida || 'Não'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Ida):</strong> ${item.colCanceladasIda || '0'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.colCanceladasVolta || '0'}</div>
+
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
+                <div class="col-12"><strong>Ação:</strong> <span class="badge bg-secondary">${item.colProvidencia}</span></div>
         `;
+        if (item.colProvidencia === 'Reassumiu') {
+            html += `
+                <div class="col-6"><strong>Sentido:</strong> ${item.colReassumiuSentido}</div>
+                <div class="col-6"><strong>Horário:</strong> ${item.colReassumiuHorario}</div>
+            `;
+        } else if (item.colProvidencia === 'Substituido') {
+            html += `
+                <div class="col-4"><strong>Carro Subst.:</strong> ${item.colSubstPrefixo}</div>
+                <div class="col-4"><strong>Sentido:</strong> ${item.colSubstSentido}</div>
+                <div class="col-4"><strong>Horário:</strong> ${item.colSubstHorario}</div>
+            `;
+        }
+        html += `</div>`; 
 
         if (item.colHouveTerceiro === 'Sim') {
             html += `
                 <h6 class="mt-4 fw-bold text-primary border-bottom pb-1">DADOS DO TERCEIRO</h6>
                 <div class="row g-2 small">
-                    <div class="col-4"><strong>Modelo:</strong> ${item.colTercModelo}</div>
-                    <div class="col-4"><strong>Cor:</strong> ${item.colTercCor}</div>
-                    <div class="col-4"><strong>Placa:</strong> ${item.colTercPlaca}</div>
-                    <div class="col-12"><strong>Nome:</strong> ${item.colTercNome}</div>
+                    <div class="col-4"><strong>Modelo:</strong> ${item.colTercModelo || '---'}</div>
+                    <div class="col-4"><strong>Cor:</strong> ${item.colTercCor || '---'}</div>
+                    <div class="col-4"><strong>Placa:</strong> ${item.colTercPlaca || '---'}</div>
+                    <div class="col-6"><strong>Nome:</strong> ${item.colTercNome || '---'}</div>
+                    <div class="col-6"><strong>Telefone:</strong> ${item.colTercTel || '---'}</div>
+                    <div class="col-12"><strong>Endereço:</strong> ${item.colTercEnd || '---'}</div>
                 </div>
             `;
         }
@@ -579,7 +626,7 @@ function verDetalhes(id) {
                 vitimas.forEach((v, index) => {
                     html += `
                         <div class="bg-danger-subtle p-2 rounded mb-2 small border border-danger">
-                            <strong>${index + 1}. Nome:</strong> ${v.nome || '--'} | <strong>Idade:</strong> ${v.idade || '--'}<br>
+                            <strong>${index + 1}. Nome:</strong> ${v.nome || '--'} | <strong>Idade:</strong> ${v.idade || '--'} | <strong>Doc:</strong> ${v.doc || '--'}<br>
                             <strong>Estado:</strong> ${v.estado || '--'} | <strong>Socorro:</strong> ${v.socorro || '--'}
                         </div>
                     `;
@@ -600,13 +647,15 @@ function verDetalhes(id) {
             <div class="row g-3">
                 <div class="col-6"><strong>Empresa:</strong> ${item.empresa}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
-                <div class="col-6"><strong>Início:</strong> ${item.atrDataInicio} às ${item.atrHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.atrDataFim || '--'} às ${item.atrHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.atrLocal}</div>
+                <div class="col-6"><strong>Carro(s):</strong> ${item.prefixo || 'VÁRIOS'}</div>
                 <div class="col-6 text-danger"><strong>Maior Atraso:</strong> ${item.atrMinutos} Minutos</div>
+                <div class="col-6"><strong>Início:</strong> ${item.atrDataInicio} às ${item.atrHoraInicio}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.atrDataFim || '--/--/----'} às ${item.atrHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.atrMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.atrLocal}</div>
                 <div class="col-6"><strong>Sentido:</strong> ${item.atrSentido}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Motivo:</strong> ${item.atrMotivo}</div>
-                <div class="col-12"><strong>Obs:</strong> ${item.atrObs || '---'}</div>
+                <div class="col-12"><strong>Observações:</strong> ${item.atrObs || '---'}</div>
             </div>
         `;
     }
@@ -635,7 +684,7 @@ function verDetalhes(id) {
     
     const actions = document.getElementById('admin-actions');
     let botoes = `<button class="btn btn-warning btn-sm me-auto fw-bold text-dark shadow-sm" onclick="editarOcorrencia('${item.id}')"><i class='bx bx-edit'></i> Editar</button>`;
-    if (usuarioAtual.role === 'admin') {
+    if (usuarioAtual && usuarioAtual.role === 'admin') {
         botoes += `<button class="btn btn-outline-danger btn-sm" onclick="excluirOcorrencia('${item.id}')"><i class='bx bx-trash'></i> Excluir</button>`;
     }
     actions.innerHTML = botoes;
