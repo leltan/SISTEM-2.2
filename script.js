@@ -537,18 +537,28 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.mecCanceladasVolta || '0'}</div>
                 
                 <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
-                <div class="col-12"><strong>Ação:</strong> <span class="badge bg-secondary">${item.mecProvidencia}</span></div>
+                <div class="col-12"><strong>Ação Principal:</strong> <span class="badge bg-secondary">${item.mecProvidencia}</span></div>
         `;
         if (item.mecProvidencia === 'Reassumiu') {
             html += `
-                <div class="col-6"><strong>Sentido:</strong> ${item.mecReassumiuSentido}</div>
-                <div class="col-6"><strong>Horário:</strong> ${item.mecReassumiuHorario}</div>
+                <div class="col-12">
+                    <div class="bg-light p-2 border rounded border-secondary">
+                        <strong><i class='bx bx-refresh'></i> Detalhes - Reassumiu a Viagem</strong><br>
+                        Sentido: <span class="text-primary fw-bold">${item.mecReassumiuSentido || '---'}</span> | 
+                        Horário: <span class="text-primary fw-bold">${item.mecReassumiuHorario || '---'}</span>
+                    </div>
+                </div>
             `;
         } else if (item.mecProvidencia === 'Substituido') {
             html += `
-                <div class="col-4"><strong>Carro Subst.:</strong> ${item.mecSubstPrefixo}</div>
-                <div class="col-4"><strong>Sentido:</strong> ${item.mecSubstSentido}</div>
-                <div class="col-4"><strong>Horário:</strong> ${item.mecSubstHorario}</div>
+                <div class="col-12">
+                    <div class="bg-warning-subtle p-2 border rounded border-warning">
+                        <strong><i class='bx bx-transfer'></i> Detalhes - Carro Substituído</strong><br>
+                        Prefixo Substituto: <span class="text-danger fw-bold">${item.mecSubstPrefixo || '---'}</span><br>
+                        Sentido: <span class="text-dark fw-bold">${item.mecSubstSentido || '---'}</span> | 
+                        Horário: <span class="text-dark fw-bold">${item.mecSubstHorario || '---'}</span>
+                    </div>
+                </div>
             `;
         }
         html += `</div>`;
@@ -589,18 +599,28 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.colCanceladasVolta || '0'}</div>
 
                 <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
-                <div class="col-12"><strong>Ação:</strong> <span class="badge bg-secondary">${item.colProvidencia}</span></div>
+                <div class="col-12"><strong>Ação Principal:</strong> <span class="badge bg-secondary">${item.colProvidencia}</span></div>
         `;
         if (item.colProvidencia === 'Reassumiu') {
             html += `
-                <div class="col-6"><strong>Sentido:</strong> ${item.colReassumiuSentido}</div>
-                <div class="col-6"><strong>Horário:</strong> ${item.colReassumiuHorario}</div>
+                <div class="col-12">
+                    <div class="bg-light p-2 border rounded border-secondary">
+                        <strong><i class='bx bx-refresh'></i> Detalhes - Reassumiu a Viagem</strong><br>
+                        Sentido: <span class="text-primary fw-bold">${item.colReassumiuSentido || '---'}</span> | 
+                        Horário: <span class="text-primary fw-bold">${item.colReassumiuHorario || '---'}</span>
+                    </div>
+                </div>
             `;
         } else if (item.colProvidencia === 'Substituido') {
             html += `
-                <div class="col-4"><strong>Carro Subst.:</strong> ${item.colSubstPrefixo}</div>
-                <div class="col-4"><strong>Sentido:</strong> ${item.colSubstSentido}</div>
-                <div class="col-4"><strong>Horário:</strong> ${item.colSubstHorario}</div>
+                <div class="col-12">
+                    <div class="bg-warning-subtle p-2 border rounded border-warning">
+                        <strong><i class='bx bx-transfer'></i> Detalhes - Carro Substituído</strong><br>
+                        Prefixo Substituto: <span class="text-danger fw-bold">${item.colSubstPrefixo || '---'}</span><br>
+                        Sentido: <span class="text-dark fw-bold">${item.colSubstSentido || '---'}</span> | 
+                        Horário: <span class="text-dark fw-bold">${item.colSubstHorario || '---'}</span>
+                    </div>
+                </div>
             `;
         }
         html += `</div>`; 
@@ -608,10 +628,10 @@ function verDetalhes(id) {
         if (item.colHouveTerceiro === 'Sim') {
             html += `
                 <h6 class="mt-4 fw-bold text-primary border-bottom pb-1">DADOS DO TERCEIRO</h6>
-                <div class="row g-2 small">
+                <div class="row g-2 small bg-light p-2 border rounded">
                     <div class="col-4"><strong>Modelo:</strong> ${item.colTercModelo || '---'}</div>
                     <div class="col-4"><strong>Cor:</strong> ${item.colTercCor || '---'}</div>
-                    <div class="col-4"><strong>Placa:</strong> ${item.colTercPlaca || '---'}</div>
+                    <div class="col-4"><strong>Placa:</strong> <span class="badge bg-dark">${item.colTercPlaca || '---'}</span></div>
                     <div class="col-6"><strong>Nome:</strong> ${item.colTercNome || '---'}</div>
                     <div class="col-6"><strong>Telefone:</strong> ${item.colTercTel || '---'}</div>
                     <div class="col-12"><strong>Endereço:</strong> ${item.colTercEnd || '---'}</div>
@@ -620,14 +640,17 @@ function verDetalhes(id) {
         }
 
         if (item.colHouveVitima === 'Sim' && item.colVitimas) {
-            html += `<h6 class="mt-4 fw-bold text-danger border-bottom pb-1">VÍTIMAS</h6>`;
+            html += `<h6 class="mt-4 fw-bold text-danger border-bottom pb-1">VÍTIMAS DA COLISÃO</h6>`;
             try {
                 const vitimas = JSON.parse(item.colVitimas);
                 vitimas.forEach((v, index) => {
                     html += `
                         <div class="bg-danger-subtle p-2 rounded mb-2 small border border-danger">
-                            <strong>${index + 1}. Nome:</strong> ${v.nome || '--'} | <strong>Idade:</strong> ${v.idade || '--'} | <strong>Doc:</strong> ${v.doc || '--'}<br>
-                            <strong>Estado:</strong> ${v.estado || '--'} | <strong>Socorro:</strong> ${v.socorro || '--'}
+                            <strong class="text-danger">Vítima ${index + 1}:</strong><br>
+                            <strong>Nome:</strong> ${v.nome || 'Não informado'} | <strong>Idade:</strong> ${v.idade || '--'}<br>
+                            <strong>CPF/RG:</strong> ${v.doc || 'Não informado'}<br>
+                            <strong>Estado:</strong> ${v.estado || '---'}<br>
+                            <strong>Socorrida Para:</strong> ${v.socorro || '---'}
                         </div>
                     `;
                 });
@@ -635,7 +658,7 @@ function verDetalhes(id) {
         }
 
         html += `<h6 class="mt-4 fw-bold border-bottom pb-1">AUTORIDADES / REGISTROS</h6>
-                 <div class="small">`;
+                 <div class="small bg-light p-2 border rounded">`;
         if (item.colGcm) html += `<div><strong>GCM:</strong> ${item.colGcm}</div>`;
         if (item.colPm) html += `<div><strong>PM:</strong> ${item.colPm}</div>`;
         if (item.colSamu) html += `<div><strong>SAMU:</strong> ${item.colSamu}</div>`;
