@@ -2,11 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const xss = require('xss');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(cors());
@@ -14,19 +18,6 @@ app.use(bodyParser.json());
 app.use(express.static(__dirname));
 
 const JWT_SECRET = 'sico-chave-secreta-2026-v1';
-
-const db = new sqlite3.Database('./sico.sqlite');
-
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS ocorrencias (
-        id TEXT PRIMARY KEY,
-        protocolo TEXT,
-        empresa TEXT,
-        tipo TEXT,
-        dataCriacao TEXT,
-        dados TEXT
-    )`);
-});
 
 const usuariosRaw = [
     { login: 'marcos.admin', senha: '123', nome: 'Marcos Gestor', role: 'admin' },
@@ -72,23 +63,26 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-app.get('/api/ocorrencias', verificarToken, (req, res) => {
-    db.all(`SELECT * FROM ocorrencias ORDER BY dataCriacao DESC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
-        const ocorrenciasFormatadas = rows.map(r => ({
-            id: r.id,
-            protocolo: r.protocolo,
-            empresa: r.empresa,
-            dataCriacao: r.dataCriacao,
-            ...JSON.parse(r.dados)
-        }));
-        
-        res.json(ocorrenciasFormatadas);
-    });
+app.get('/api/ocorrencias', verificarToken, async (req, res) => {
+    const { data, error } = await supabase
+        .from('ocorrencias')
+        .select('*')
+        .order('data_criacao', { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const ocorrenciasFormatadas = data.map(r => ({
+        id: r.id,
+        protocolo: r.protocolo,
+        empresa: r.empresa,
+        dataCriacao: r.data_criacao,
+        ...JSON.parse(r.dados || '{}')
+    }));
+
+    res.json(ocorrenciasFormatadas);
 });
 
-app.post('/api/ocorrencias', verificarToken, (req, res) => {
+app.post('/api/ocorrencias', verificarToken, async (req, res) => {
     const dadosRaw = req.body;
     const dados = {};
     
@@ -125,30 +119,38 @@ app.post('/api/ocorrencias', verificarToken, (req, res) => {
     }
 
     const anoAtual = new Date().getFullYear();
-    db.get(`SELECT COUNT(*) as total FROM ocorrencias WHERE protocolo LIKE '%/' || ?`, [anoAtual], (err, row) => {
-        if (err) return res.status(500).json({ error: "Erro interno no banco." });
-        
-        const count = row ? row.total : 0;
-        const numeroSequencial = (count + 1).toString().padStart(5, '0');
-        const protocolo = `${numeroSequencial}/${anoAtual}`;
-        const id = uuidv4();
-        const dataCriacao = new Date().toISOString();
+    
+    const { count, error: countError } = await supabase
+        .from('ocorrencias')
+        .select('*', { count: 'exact', head: true });
 
-        db.run(
-            `INSERT INTO ocorrencias (id, protocolo, empresa, tipo, dataCriacao, dados) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, protocolo, empresaDetectada, dados.tipo, dataCriacao, JSON.stringify(dados)],
-            function(err) {
-                if (err) return res.status(500).json({ error: "Erro ao gravar B.O." });
-                
-                res.status(201).json({
-                    id, protocolo, empresa: empresaDetectada, dataCriacao, ...dados
-                });
-            }
-        );
+    if (countError) return res.status(500).json({ error: "Erro interno no banco." });
+
+    const total = count || 0;
+    const numeroSequencial = (total + 1).toString().padStart(5, '0');
+    const protocolo = `${numeroSequencial}/${anoAtual}`;
+    const id = uuidv4();
+    const dataCriacao = new Date().toISOString();
+
+    const { error: insertError } = await supabase
+        .from('ocorrencias')
+        .insert([{
+            id,
+            protocolo,
+            empresa: empresaDetectada,
+            tipo: dados.tipo,
+            data_criacao: dataCriacao,
+            dados: JSON.stringify(dados)
+        }]);
+
+    if (insertError) return res.status(500).json({ error: "Erro ao gravar B.O." });
+
+    res.status(201).json({
+        id, protocolo, empresa: empresaDetectada, dataCriacao, ...dados
     });
 });
 
-app.put('/api/ocorrencias/:id', verificarToken, (req, res) => {
+app.put('/api/ocorrencias/:id', verificarToken, async (req, res) => {
     const id = req.params.id;
     const dadosNovosRaw = req.body;
     const dadosNovos = {};
@@ -161,93 +163,107 @@ app.put('/api/ocorrencias/:id', verificarToken, (req, res) => {
         }
     }
 
-    db.get(`SELECT * FROM ocorrencias WHERE id = ?`, [id], (err, row) => {
-        if (err || !row) return res.status(404).json({ error: "Ocorrência não encontrada." });
-        
-        const dadosAntigos = JSON.parse(row.dados);
-        const historico = dadosAntigos.historico || [];
-        const alteracoes = [];
+    const { data: row, error: fetchError } = await supabase
+        .from('ocorrencias')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-        for(const key in dadosNovos) {
-            if (key !== 'historico' && key !== 'criadoPor' && key !== 'status') {
-                if (dadosNovos[key] !== dadosAntigos[key]) {
-                    alteracoes.push({
-                        campo: key,
-                        de: dadosAntigos[key] || '(Vazio)',
-                        para: dadosNovos[key] || '(Vazio)'
-                    });
-                }
+    if (fetchError || !row) return res.status(404).json({ error: "Ocorrência não encontrada." });
+
+    const dadosAntigos = JSON.parse(row.dados || '{}');
+    const historico = dadosAntigos.historico || [];
+    const alteracoes = [];
+
+    for(const key in dadosNovos) {
+        if (key !== 'historico' && key !== 'criadoPor' && key !== 'status') {
+            if (dadosNovos[key] !== dadosAntigos[key]) {
+                alteracoes.push({
+                    campo: key,
+                    de: dadosAntigos[key] || '(Vazio)',
+                    para: dadosNovos[key] || '(Vazio)'
+                });
             }
         }
+    }
 
-        if (alteracoes.length > 0 || dadosNovos.status !== dadosAntigos.status) {
-            historico.push({
-                dataHora: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-                usuario: req.usuarioLogado.nome,
-                novoStatus: dadosNovos.status,
-                mudancas: alteracoes
-            });
-        }
+    if (alteracoes.length > 0 || dadosNovos.status !== dadosAntigos.status) {
+        historico.push({
+            dataHora: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+            usuario: req.usuarioLogado.nome,
+            novoStatus: dadosNovos.status,
+            mudancas: alteracoes
+        });
+    }
 
-        dadosNovos.historico = historico;
-        dadosNovos.criadoPor = dadosAntigos.criadoPor; 
+    dadosNovos.historico = historico;
+    dadosNovos.criadoPor = dadosAntigos.criadoPor; 
 
-        let empresaDetectada = row.empresa;
-        if (dadosNovos.tipo !== 'Desvio' && dadosNovos.tipo !== 'Atraso') {
-            if (frotaFervima.includes(dadosNovos.prefixo)) empresaDetectada = 'Fervima';
-            else if (frotaPirajucara.includes(dadosNovos.prefixo)) empresaDetectada = 'Pirajuçara';
-        } else if (dadosNovos.tipo === 'Atraso') {
-            empresaDetectada = dadosNovos.empresa;
-        }
+    let empresaDetectada = row.empresa;
+    if (dadosNovos.tipo !== 'Desvio' && dadosNovos.tipo !== 'Atraso') {
+        if (frotaFervima.includes(dadosNovos.prefixo)) empresaDetectada = 'Fervima';
+        else if (frotaPirajucara.includes(dadosNovos.prefixo)) empresaDetectada = 'Pirajuçara';
+    } else if (dadosNovos.tipo === 'Atraso') {
+        empresaDetectada = dadosNovos.empresa;
+    }
 
-        db.run(
-            `UPDATE ocorrencias SET empresa = ?, tipo = ?, dados = ? WHERE id = ?`, 
-            [empresaDetectada, dadosNovos.tipo, JSON.stringify(dadosNovos), id], 
-            function(err) {
-                if (err) return res.status(500).json({ error: "Erro ao atualizar." });
-                res.json({ sucesso: true, id: id });
-            }
-        );
-    });
+    const { error: updateError } = await supabase
+        .from('ocorrencias')
+        .update({
+            empresa: empresaDetectada,
+            tipo: dadosNovos.tipo,
+            dados: JSON.stringify(dadosNovos)
+        })
+        .eq('id', id);
+
+    if (updateError) return res.status(500).json({ error: "Erro ao atualizar." });
+    res.json({ sucesso: true, id: id });
 });
 
-app.delete('/api/ocorrencias/:id', verificarToken, (req, res) => {
+app.delete('/api/ocorrencias/:id', verificarToken, async (req, res) => {
     const roleUsuario = req.usuarioLogado.role;
     const idParaApagar = req.params.id;
 
     if (roleUsuario !== 'admin') return res.status(403).json({ error: "Acesso Negado." });
 
-    db.run(`DELETE FROM ocorrencias WHERE id = ?`, [idParaApagar], function(err) {
-        if (err) return res.status(500).json({ error: "Erro ao excluir." });
-        if (this.changes === 0) return res.status(404).json({ error: "Ocorrência não encontrada." });
-        res.json({ mensagem: "Excluída com sucesso." });
-    });
+    const { data, error } = await supabase
+        .from('ocorrencias')
+        .delete()
+        .eq('id', idParaApagar)
+        .select();
+
+    if (error) return res.status(500).json({ error: "Erro ao excluir." });
+    if (!data || data.length === 0) return res.status(404).json({ error: "Ocorrência não encontrada." });
+
+    res.json({ mensagem: "Excluída com sucesso." });
 });
 
-app.get('/api/exportar', verificarToken, (req, res) => {
-    db.all(`SELECT * FROM ocorrencias ORDER BY dataCriacao DESC`, [], (err, rows) => {
-        if (err || rows.length === 0) return res.status(400).send("Sem dados para exportar");
+app.get('/api/exportar', verificarToken, async (req, res) => {
+    const { data: rows, error } = await supabase
+        .from('ocorrencias')
+        .select('*')
+        .order('data_criacao', { ascending: false });
 
-        let csv = "Protocolo;Tipo;Carro;Linha;Inicio;Defeito_Motivo;Local;Providencia;Status\n";
+    if (error || !rows || rows.length === 0) return res.status(400).send("Sem dados para exportar");
 
-        rows.forEach(r => {
-            const oc = JSON.parse(r.dados);
-            let inicio = oc.mecHoraInicio || oc.desvHoraInicio || oc.colHoraInicio || oc.atrHoraInicio || '-';
-            let defeito = oc.mecDefeito || oc.desvMotivo || oc.atrMotivo || '-';
-            let local = oc.mecLocal || oc.desvLocal || oc.colLocal || oc.atrLocal || '-';
-            let prov = oc.mecProvidencia || oc.desvRota || oc.colProvidencia || '-';
+    let csv = "Protocolo;Tipo;Carro;Linha;Inicio;Defeito_Motivo;Local;Providencia;Status\n";
 
-            csv += `${r.protocolo};${oc.tipo};${oc.prefixo || '-'};${oc.linha || '-'};${inicio};${defeito};${local};${prov};${oc.status || 'Pendente'}\n`;
-        });
+    rows.forEach(r => {
+        const oc = JSON.parse(r.dados || '{}');
+        let inicio = oc.mecHoraInicio || oc.desvHoraInicio || oc.colHoraInicio || oc.atrHoraInicio || '-';
+        let defeito = oc.mecDefeito || oc.desvMotivo || oc.atrMotivo || '-';
+        let local = oc.mecLocal || oc.desvLocal || oc.colLocal || oc.atrLocal || '-';
+        let prov = oc.mecProvidencia || oc.desvRota || oc.colProvidencia || '-';
 
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename=\"relatorio_sico_v2.csv\"');
-        res.send(csv);
+        csv += `${r.protocolo};${oc.tipo};${oc.prefixo || '-'};${oc.linha || '-'};${inicio};${defeito};${local};${prov};${oc.status || 'Pendente'}\n`;
     });
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=\"relatorio_sico_v2.csv\"');
+    res.send(csv);
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`SICO 2.2 Rodando na porta ${PORT}`);
-    console.log(`Segurança JWT, Sanitização XSS, Banco SQLite e Auditoria Ativados!`);
+    console.log(`SICO 2.2 Rodando na porta ${PORT} conectado ao Supabase!`);
 });
