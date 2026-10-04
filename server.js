@@ -124,7 +124,7 @@ app.post('/api/ocorrencias', verificarToken, async (req, res) => {
         .from('ocorrencias')
         .select('*', { count: 'exact', head: true });
 
-    if (countError) return res.status(500).json({ error: "Erro interno no banco." });
+    if (countError) return res.status(500).json({ error: "Erro no count: " + countError.message });
 
     const total = count || 0;
     const numeroSequencial = (total + 1).toString().padStart(5, '0');
@@ -143,7 +143,7 @@ app.post('/api/ocorrencias', verificarToken, async (req, res) => {
             dados: JSON.stringify(dados)
         }]);
 
-    if (insertError) return res.status(500).json({ error: "Erro ao gravar B.O." });
+    if (insertError) return res.status(500).json({ error: "Erro no insert: " + insertError.message });
 
     res.status(201).json({
         id, protocolo, empresa: empresaDetectada, dataCriacao, ...dados
