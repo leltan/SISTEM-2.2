@@ -7,6 +7,11 @@ const linhasFervima = ['Circular 02', 'Circular 03', 'Circular 04', 'Circular 07
 const linhasPirajucara = ['Circular 05', 'Circular 06', 'Circular 09', 'Circular 09.1'];
 const todasLinhas = [...linhasFervima, ...linhasPirajucara];
 
+// LISTAS DE CARROS GLOBAIS PARA FACILITAR AS CORES NA TABELA
+const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
+const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
+
+
 function restaurarSessao() {
     const token = localStorage.getItem('sico_token');
     if (!token) return;
@@ -92,18 +97,15 @@ function verificarEmpresa() {
 
     selectLinha.innerHTML = '<option value="">Selecione...</option>';
     
-    // LISTAS DE CARROS ADICIONADAS AQUI PARA VALIDAÇÃO LOCAL!
-    const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
-    const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
-
+    // APLICANDO AS CORES REAIS DA FROTA AQUI!
     if (frotaFervima.includes(prefixo)) {
         badge.innerText = "FERVIMA";
-        badge.className = "badge bg-warning text-dark mt-1 w-100";
+        badge.className = "badge badge-fervima mt-1 w-100 shadow-sm";
         selectLinha.disabled = false;
         linhasFervima.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     } else if (frotaPirajucara.includes(prefixo)) {
         badge.innerText = "PIRAJUÇARA";
-        badge.className = "badge bg-primary mt-1 w-100";
+        badge.className = "badge badge-pirajucara mt-1 w-100 shadow-sm";
         selectLinha.disabled = false;
         linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     } else {
@@ -526,23 +528,58 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Carro:</strong> ${item.prefixo}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.mecDataInicio} às ${item.mecHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.mecDataFim || '--'} às ${item.mecHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.mecLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.mecDataFim || '--/--/----'} às ${item.mecHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.mecMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.mecLocal}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Defeito:</strong> ${item.mecDefeito}</div>
-                <div class="col-12"><strong>Providência:</strong> ${item.mecProvidencia}</div>
-            </div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Impacto na Operação</h6></div>
+                <div class="col-12"><strong>Partida Interrompida?</strong> ${item.mecPartidaInterrompida || 'Não'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Ida):</strong> ${item.mecCanceladasIda || '0'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.mecCanceladasVolta || '0'}</div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
+                <div class="col-12"><strong>Ação Principal:</strong> <span class="badge bg-secondary">${item.mecProvidencia}</span></div>
         `;
+        if (item.mecProvidencia === 'Reassumiu') {
+            html += `
+                <div class="col-12">
+                    <div class="bg-light p-2 border rounded border-secondary">
+                        <strong><i class='bx bx-refresh'></i> Detalhes - Reassumiu a Viagem</strong><br>
+                        Sentido: <span class="text-primary fw-bold">${item.mecReassumiuSentido || '---'}</span> | 
+                        Horário: <span class="text-primary fw-bold">${item.mecReassumiuHorario || '---'}</span>
+                    </div>
+                </div>
+            `;
+        } else if (item.mecProvidencia === 'Substituido') {
+            html += `
+                <div class="col-12">
+                    <div class="bg-warning-subtle p-2 border rounded border-warning">
+                        <strong><i class='bx bx-transfer'></i> Detalhes - Carro Substituído</strong><br>
+                        Prefixo Substituto: <span class="text-danger fw-bold">${item.mecSubstPrefixo || '---'}</span><br>
+                        Sentido: <span class="text-dark fw-bold">${item.mecSubstSentido || '---'}</span> | 
+                        Horário: <span class="text-dark fw-bold">${item.mecSubstHorario || '---'}</span>
+                    </div>
+                </div>
+            `;
+        }
+        html += `</div>`;
     } 
     else if (item.tipo === 'Desvio') {
         html += `
             <div class="row g-3">
                 <div class="col-12 text-primary fw-bold">LINHAS AFETADAS:</div>
                 <div class="col-12 bg-light p-2 small">${item.linha}</div>
+                <div class="col-12"><strong>Carros Retidos/Envolvidos:</strong> ${item.desvCarros || 'Nenhum informado'}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.desvDataInicio} às ${item.desvHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.desvDataFim || '--'} às ${item.desvHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.desvLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.desvDataFim || '--/--/----'} às ${item.desvHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.desvMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.desvLocal}</div>
+                <div class="col-6"><strong>Sentido:</strong> ${item.desvSentido || '---'}</div>
+                <div class="col-6"><strong>Pontos Desatendidos:</strong> ${item.desvPontosSem || 'Nenhum'}</div>
                 <div class="col-12"><strong>Motivo:</strong> ${item.desvMotivo}</div>
-                <div class="col-12"><strong>Rota Realizada:</strong> ${item.desvRota}</div>
+                <div class="col-12 bg-light p-2 border"><strong>Rota Realizada:</strong> ${item.desvRota}</div>
+                <div class="col-12"><strong>Observações:</strong> ${item.desvObs || 'Nenhuma observação'}</div>
             </div>
         `;
     }
@@ -552,35 +589,70 @@ function verDetalhes(id) {
                 <div class="col-6"><strong>Carro:</strong> ${item.prefixo}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
                 <div class="col-6"><strong>Início:</strong> ${item.colDataInicio} às ${item.colHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.colDataFim || '--'} às ${item.colHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.colLocal}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.colDataFim || '--/--/----'} às ${item.colHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.colMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.colLocal}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Condutor:</strong> ${item.colCondutorNome} (Mat: ${item.colCondutorMatricula})</div>
                 <div class="col-12"><strong>Avaria Coletivo:</strong> ${item.colAvariaColetivo}</div>
-                <div class="col-12"><strong>Providência:</strong> ${item.colProvidencia}</div>
-            </div>
+                
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Impacto na Operação</h6></div>
+                <div class="col-12"><strong>Partida Interrompida?</strong> ${item.colPartidaInterrompida || 'Não'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Ida):</strong> ${item.colCanceladasIda || '0'}</div>
+                <div class="col-6"><strong>Viagens Canceladas (Volta):</strong> ${item.colCanceladasVolta || '0'}</div>
+
+                <div class="col-12 mt-3"><h6 class="fw-bold border-bottom pb-1 text-secondary">Providência Tomada</h6></div>
+                <div class="col-12"><strong>Ação Principal:</strong> <span class="badge bg-secondary">${item.colProvidencia}</span></div>
         `;
+        if (item.colProvidencia === 'Reassumiu') {
+            html += `
+                <div class="col-12">
+                    <div class="bg-light p-2 border rounded border-secondary">
+                        <strong><i class='bx bx-refresh'></i> Detalhes - Reassumiu a Viagem</strong><br>
+                        Sentido: <span class="text-primary fw-bold">${item.colReassumiuSentido || '---'}</span> | 
+                        Horário: <span class="text-primary fw-bold">${item.colReassumiuHorario || '---'}</span>
+                    </div>
+                </div>
+            `;
+        } else if (item.colProvidencia === 'Substituido') {
+            html += `
+                <div class="col-12">
+                    <div class="bg-warning-subtle p-2 border rounded border-warning">
+                        <strong><i class='bx bx-transfer'></i> Detalhes - Carro Substituído</strong><br>
+                        Prefixo Substituto: <span class="text-danger fw-bold">${item.colSubstPrefixo || '---'}</span><br>
+                        Sentido: <span class="text-dark fw-bold">${item.colSubstSentido || '---'}</span> | 
+                        Horário: <span class="text-dark fw-bold">${item.colSubstHorario || '---'}</span>
+                    </div>
+                </div>
+            `;
+        }
+        html += `</div>`; 
 
         if (item.colHouveTerceiro === 'Sim') {
             html += `
                 <h6 class="mt-4 fw-bold text-primary border-bottom pb-1">DADOS DO TERCEIRO</h6>
-                <div class="row g-2 small">
-                    <div class="col-4"><strong>Modelo:</strong> ${item.colTercModelo}</div>
-                    <div class="col-4"><strong>Cor:</strong> ${item.colTercCor}</div>
-                    <div class="col-4"><strong>Placa:</strong> ${item.colTercPlaca}</div>
-                    <div class="col-12"><strong>Nome:</strong> ${item.colTercNome}</div>
+                <div class="row g-2 small bg-light p-2 border rounded">
+                    <div class="col-4"><strong>Modelo:</strong> ${item.colTercModelo || '---'}</div>
+                    <div class="col-4"><strong>Cor:</strong> ${item.colTercCor || '---'}</div>
+                    <div class="col-4"><strong>Placa:</strong> <span class="badge bg-dark">${item.colTercPlaca || '---'}</span></div>
+                    <div class="col-6"><strong>Nome:</strong> ${item.colTercNome || '---'}</div>
+                    <div class="col-6"><strong>Telefone:</strong> ${item.colTercTel || '---'}</div>
+                    <div class="col-12"><strong>Endereço:</strong> ${item.colTercEnd || '---'}</div>
                 </div>
             `;
         }
 
         if (item.colHouveVitima === 'Sim' && item.colVitimas) {
-            html += `<h6 class="mt-4 fw-bold text-danger border-bottom pb-1">VÍTIMAS</h6>`;
+            html += `<h6 class="mt-4 fw-bold text-danger border-bottom pb-1">VÍTIMAS DA COLISÃO</h6>`;
             try {
                 const vitimas = JSON.parse(item.colVitimas);
                 vitimas.forEach((v, index) => {
                     html += `
                         <div class="bg-danger-subtle p-2 rounded mb-2 small border border-danger">
-                            <strong>${index + 1}. Nome:</strong> ${v.nome || '--'} | <strong>Idade:</strong> ${v.idade || '--'}<br>
-                            <strong>Estado:</strong> ${v.estado || '--'} | <strong>Socorro:</strong> ${v.socorro || '--'}
+                            <strong class="text-danger">Vítima ${index + 1}:</strong><br>
+                            <strong>Nome:</strong> ${v.nome || 'Não informado'} | <strong>Idade:</strong> ${v.idade || '--'}<br>
+                            <strong>CPF/RG:</strong> ${v.doc || 'Não informado'}<br>
+                            <strong>Estado:</strong> ${v.estado || '---'}<br>
+                            <strong>Socorrida Para:</strong> ${v.socorro || '---'}
                         </div>
                     `;
                 });
@@ -588,7 +660,7 @@ function verDetalhes(id) {
         }
 
         html += `<h6 class="mt-4 fw-bold border-bottom pb-1">AUTORIDADES / REGISTROS</h6>
-                 <div class="small">`;
+                 <div class="small bg-light p-2 border rounded">`;
         if (item.colGcm) html += `<div><strong>GCM:</strong> ${item.colGcm}</div>`;
         if (item.colPm) html += `<div><strong>PM:</strong> ${item.colPm}</div>`;
         if (item.colSamu) html += `<div><strong>SAMU:</strong> ${item.colSamu}</div>`;
@@ -600,13 +672,15 @@ function verDetalhes(id) {
             <div class="row g-3">
                 <div class="col-6"><strong>Empresa:</strong> ${item.empresa}</div>
                 <div class="col-6"><strong>Linha:</strong> ${item.linha}</div>
-                <div class="col-6"><strong>Início:</strong> ${item.atrDataInicio} às ${item.atrHoraInicio}</div>
-                <div class="col-6"><strong>Fim:</strong> ${item.atrDataFim || '--'} às ${item.atrHoraFim || '--'}</div>
-                <div class="col-12"><strong>Local:</strong> ${item.atrLocal}</div>
+                <div class="col-6"><strong>Carro(s):</strong> ${item.prefixo || 'VÁRIOS'}</div>
                 <div class="col-6 text-danger"><strong>Maior Atraso:</strong> ${item.atrMinutos} Minutos</div>
+                <div class="col-6"><strong>Início:</strong> ${item.atrDataInicio} às ${item.atrHoraInicio}</div>
+                <div class="col-6"><strong>Fim:</strong> ${item.atrDataFim || '--/--/----'} às ${item.atrHoraFim || '--:--'}</div>
+                <div class="col-6"><strong>Município:</strong> ${item.atrMunicipio}</div>
+                <div class="col-6"><strong>Local:</strong> ${item.atrLocal}</div>
                 <div class="col-6"><strong>Sentido:</strong> ${item.atrSentido}</div>
                 <div class="col-12 bg-light p-2 border"><strong>Motivo:</strong> ${item.atrMotivo}</div>
-                <div class="col-12"><strong>Obs:</strong> ${item.atrObs || '---'}</div>
+                <div class="col-12"><strong>Observações:</strong> ${item.atrObs || '---'}</div>
             </div>
         `;
     }
@@ -635,7 +709,7 @@ function verDetalhes(id) {
     
     const actions = document.getElementById('admin-actions');
     let botoes = `<button class="btn btn-warning btn-sm me-auto fw-bold text-dark shadow-sm" onclick="editarOcorrencia('${item.id}')"><i class='bx bx-edit'></i> Editar</button>`;
-    if (usuarioAtual.role === 'admin') {
+    if (usuarioAtual && usuarioAtual.role === 'admin') {
         botoes += `<button class="btn btn-outline-danger btn-sm" onclick="excluirOcorrencia('${item.id}')"><i class='bx bx-trash'></i> Excluir</button>`;
     }
     actions.innerHTML = botoes;
@@ -670,8 +744,16 @@ function renderizarTabela(dados) {
         let hora = item.mecHoraInicio || item.desvHoraInicio || item.colHoraInicio || item.atrHoraInicio || '--:--';
         let local = item.mecLocal || item.desvLocal || item.colLocal || item.atrLocal || '---';
 
+        // LÓGICA DA COR LATERAL NA TABELA
+        let classeLinhaEmpresa = '';
+        if (frotaFervima.includes(item.prefixo)) {
+            classeLinhaEmpresa = 'linha-fervima';
+        } else if (frotaPirajucara.includes(item.prefixo)) {
+            classeLinhaEmpresa = 'linha-pirajucara';
+        }
+
         const tr = `
-            <tr>
+            <tr class="${classeLinhaEmpresa}">
                 <td class="ps-4 fw-bold text-primary">${item.protocolo}</td>
                 <td>${hora}</td>
                 <td>
