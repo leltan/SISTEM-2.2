@@ -3,14 +3,29 @@ const API_URL = '/api';
 let usuarioAtual = null;
 let listaOcorrencias = [];
 
+
 const linhasFervima = ['Circular 02', 'Circular 03', 'Circular 04', 'Circular 07.1', 'Circular 07.2', 'Circular 08'];
 const linhasPirajucara = ['Circular 05', 'Circular 06', 'Circular 09', 'Circular 09.1'];
-const todasLinhas = [...linhasFervima, ...linhasPirajucara];
+const linhasCDA = [
+    'LINHA 01', 'LINHA 100', 'LINHA 01B', 'LINHA 01I', 'LINHA 02', 'LINHA 02A', 'LINHA 02B', 
+    'LINHA 02C', 'LINHA 02CI', 'LINHA 02D', 'LINHA 02DI', 'LINHA 03', 'LINHA 03A', 'LINHA 03CI', 
+    'LINHA 03I', 'LINHA 03/06', 'LINHA 04', 'LINHA 04A', 'LINHA 04HI', 'LINHA 05', 'LINHA 05I', 
+    'LINHA 06', 'LINHA 06A', 'LINHA 06AI', 'LINHA 06I', 'LINHA 07', 'LINHA 07A', 'LINHA 07I'
+];
+const todasLinhas = [...linhasFervima, ...linhasPirajucara, ...linhasCDA];
 
-// LISTAS DE CARROS GLOBAIS PARA FACILITAR AS CORES NA TABELA
+
 const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
 const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
-
+const frotaCDA = [
+    '3001', '3002', '3003', '3004', '3006', '3007', '3008', '3009', '3010', '3011', '3012', 
+    '3013', '3014', '3015', '3016', '3017', '3018', '3019', '3020', '3021', '3022', '3023', 
+    '3024', '3025', '3026', '3027', '3028', '3029', '3030', '3031', '3032', '3100', '3101', 
+    '3102', '3103', '3104', '3105', '3106', '3107', '3108', '3109', '3110', '3111', '3112', 
+    '3113', '3114', '3115', '3116', '3117', '3118', '3119', '3120', '3121', '3122', '3123', 
+    '3124', '3125', '3126', '3127', '3128', '3129', '3130', '3131', '3132', '3133', '3134', 
+    '3135', '3136', '3137', '3138', '3139'
+];
 
 function restaurarSessao() {
     const token = localStorage.getItem('sico_token');
@@ -81,8 +96,8 @@ function gerarCheckboxesLinhas() {
             div.className = 'col-6 col-md-4';
             div.innerHTML = `
                 <div class="form-check">
-                    <input class="form-check-input linha-checkbox" type="checkbox" value="${linha}" id="chk-${linha.replace(/\s/g, '')}">
-                    <label class="form-check-label" for="chk-${linha.replace(/\s/g, '')}">${linha}</label>
+                    <input class="form-check-input linha-checkbox" type="checkbox" value="${linha}" id="chk-${linha.replace(/[\s\/.]/g, '')}">
+                    <label class="form-check-label" for="chk-${linha.replace(/[\s\/.]/g, '')}">${linha}</label>
                 </div>
             `;
             container.appendChild(div);
@@ -97,7 +112,7 @@ function verificarEmpresa() {
 
     selectLinha.innerHTML = '<option value="">Selecione...</option>';
     
-    // APLICANDO AS CORES REAIS DA FROTA AQUI!
+
     if (frotaFervima.includes(prefixo)) {
         badge.innerText = "FERVIMA";
         badge.className = "badge badge-fervima mt-1 w-100 shadow-sm";
@@ -108,6 +123,11 @@ function verificarEmpresa() {
         badge.className = "badge badge-pirajucara mt-1 w-100 shadow-sm";
         selectLinha.disabled = false;
         linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
+    } else if (frotaCDA.includes(prefixo)) {
+        badge.innerText = "CIDADE DAS ARTES";
+        badge.className = "badge badge-cda mt-1 w-100 shadow-sm";
+        selectLinha.disabled = false;
+        linhasCDA.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     } else {
         badge.innerText = "---";
         badge.className = "badge bg-secondary mt-1 w-100";
@@ -127,8 +147,37 @@ function atualizarLinhasAtraso() {
     } else if (empresa === 'Pirajuçara') {
         selectLinha.disabled = false;
         linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
+    } else if (empresa === 'CDA') {
+        selectLinha.disabled = false;
+        linhasCDA.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectAtrEmpresa = document.getElementById('atr-empresa');
+    if (selectAtrEmpresa && !selectAtrEmpresa.querySelector('option[value="CDA"]')) {
+        selectAtrEmpresa.innerHTML += `<option value="CDA">Cidade das Artes</option>`;
+    }
+
+
+    const btnToggleSenha = document.getElementById('btn-toggle-senha');
+    const inputSenha = document.getElementById('login-senha');
+    if (btnToggleSenha && inputSenha) {
+        btnToggleSenha.addEventListener('click', function() {
+            if (inputSenha.type === 'password') {
+                inputSenha.type = 'text';
+                btnToggleSenha.classList.remove('bx-hide');
+                btnToggleSenha.classList.add('bx-show');
+                btnToggleSenha.classList.add('text-primary');
+            } else {
+                inputSenha.type = 'password';
+                btnToggleSenha.classList.remove('bx-show');
+                btnToggleSenha.classList.add('bx-hide');
+                btnToggleSenha.classList.remove('text-primary');
+            }
+        });
+    }
+});
 
 function ajustarFormulario() {
     const tipo = document.getElementById('tipo').value;
@@ -744,12 +793,13 @@ function renderizarTabela(dados) {
         let hora = item.mecHoraInicio || item.desvHoraInicio || item.colHoraInicio || item.atrHoraInicio || '--:--';
         let local = item.mecLocal || item.desvLocal || item.colLocal || item.atrLocal || '---';
 
-        // LÓGICA DA COR LATERAL NA TABELA
         let classeLinhaEmpresa = '';
         if (frotaFervima.includes(item.prefixo)) {
             classeLinhaEmpresa = 'linha-fervima';
         } else if (frotaPirajucara.includes(item.prefixo)) {
             classeLinhaEmpresa = 'linha-pirajucara';
+        } else if (frotaCDA.includes(item.prefixo)) {
+            classeLinhaEmpresa = 'linha-cda';
         }
 
         const tr = `

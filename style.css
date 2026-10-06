@@ -2,9 +2,17 @@
     --primary-color: #0d6efd; 
     --dark-blue: #0A2558;     
     --bg-color: #F5F7FA;      
-    /* Novas Cores das Empresas */
+    
+    /* Cores das Empresas */
     --cor-fervima: #D32F2F;      /* Vermelho Sólido */
     --cor-pirajucara: #2E7D32;   /* Verde Médio */
+    --cor-cda: #F57C00;          /* Laranja Escuro/Âmbar para a CDA */
+
+    /* Cores do Tema Dark / Neon Login */
+    --neon-purple: #8a2be2;      /* Roxo vibrante (Blue Violet) */
+    --neon-purple-glow: rgba(138, 43, 226, 0.5);
+    --glass-bg: rgba(15, 15, 22, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.12);
 }
 
 body {
@@ -12,38 +20,144 @@ body {
     background-color: var(--bg-color);
 }
 
-/* LOGIN */
-#login-screen {
+
+.login-background {
     height: 100vh;
-    background: url('https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=1920&auto=format&fit=crop') center/cover;
+ 
+    background: url('img/tela.login.png') center/cover no-repeat;
     position: relative;
-}
-.login-overlay {
-    position: absolute; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-}
-.login-card {
-    z-index: 2; width: 100%; max-width: 400px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 12px;
+    overflow: hidden;
 }
 
-/* DASHBOARD */
+.login-overlay-dark {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(10,10,25,0.6) 100%);
+}
+
+
+.glass-login-card {
+    z-index: 2; 
+    width: 100%; 
+    max-width: 420px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), 0 0 20px var(--neon-purple-glow);
+    transition: box-shadow 0.4s ease;
+}
+
+.glass-login-card:hover {
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), 0 0 30px rgba(138, 43, 226, 0.7);
+}
+
+.login-brand i {
+    color: var(--neon-purple);
+    text-shadow: 0 0 15px var(--neon-purple-glow);
+}
+
+.brand-text {
+    letter-spacing: 2px;
+}
+
+
+.custom-input-group {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.2rem;
+    z-index: 5;
+    transition: color 0.3s ease;
+}
+
+.glass-input {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    padding: 14px 15px 14px 45px !important; /* Espaço à esquerda para o ícone */
+    height: 55px;
+    transition: all 0.3s ease !important;
+}
+
+.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+
+.glass-input:focus {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border-color: var(--neon-purple) !important;
+    box-shadow: 0 0 15px var(--neon-purple-glow) !important;
+    outline: none;
+}
+
+
+.custom-input-group:focus-within .input-icon {
+    color: var(--neon-purple);
+}
+
+
+.toggle-password {
+    transition: color 0.3s ease;
+    font-size: 1.2rem;
+}
+.toggle-password:hover {
+    color: var(--neon-purple) !important;
+}
+
+
+.btn-login {
+    background: linear-gradient(135deg, #7b2cbf 0%, var(--neon-purple) 100%);
+    border: none;
+    color: white;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px var(--neon-purple-glow);
+}
+
+.btn-login:hover {
+    background: linear-gradient(135deg, var(--neon-purple) 0%, #9d4edd 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(138, 43, 226, 0.8);
+    color: white;
+}
+
+
+.fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
 .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0; width: 250px;
     background-color: var(--dark-blue); color: white;
 }
+
 .content { margin-left: 250px; min-height: 100vh; }
 
 .custom-table thead th {
     border: none; font-size: 0.85rem; text-transform: uppercase; color: #6c757d;
 }
 
-/* =========================================
-   CORES DA FROTA - ETIQUETAS E TABELA
-========================================= */
 
-/* Etiquetas do Formulário */
 .badge-fervima {
     background-color: var(--cor-fervima) !important;
     color: white !important;
@@ -54,11 +168,19 @@ body {
     color: white !important;
 }
 
-/* Detalhe Sutil na Tabela Principal (Borda Lateral) */
+.badge-cda {
+    background-color: var(--cor-cda) !important;
+    color: white !important;
+}
+
 .linha-fervima td:first-child {
     border-left: 5px solid var(--cor-fervima) !important;
 }
 
 .linha-pirajucara td:first-child {
     border-left: 5px solid var(--cor-pirajucara) !important;
+}
+
+.linha-cda td:first-child {
+    border-left: 5px solid var(--cor-cda) !important;
 }
