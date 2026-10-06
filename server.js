@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path'); // <-- ADICIONADO PARA CORRIGIR O RENDER
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
@@ -15,7 +16,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(__dirname));
+
+// CAMINHO ESTÁTICO CORRIGIDO COM PATH.JOIN
+app.use(express.static(path.join(__dirname)));
 
 const JWT_SECRET = 'sico-chave-secreta-2026-v1';
 
@@ -53,7 +56,6 @@ function verificarToken(req, res, next) {
     });
 }
 
-
 app.post('/api/login', async (req, res) => {
     const { login, senha } = req.body;
     
@@ -78,7 +80,6 @@ app.post('/api/login', async (req, res) => {
         res.status(401).json({ error: "Usuário ou senha inválidos" });
     }
 });
-
 
 app.post('/api/usuarios', verificarToken, async (req, res) => {
     if (req.usuarioLogado.role !== 'admin') {
@@ -110,7 +111,6 @@ app.post('/api/usuarios', verificarToken, async (req, res) => {
     res.status(201).json({ sucesso: true, mensagem: "Utilizador criado com sucesso!" });
 });
 
-
 app.get('/api/ocorrencias', verificarToken, async (req, res) => {
     const { data, error } = await supabase
         .from('ocorrencias')
@@ -119,7 +119,6 @@ app.get('/api/ocorrencias', verificarToken, async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Filtragem por permissão de empresas do utilizador logado
     const empresasPermitidas = req.usuarioLogado.empresas || [];
     const isAdmin = req.usuarioLogado.role === 'admin';
 
@@ -131,7 +130,6 @@ app.get('/api/ocorrencias', verificarToken, async (req, res) => {
         ...JSON.parse(r.dados || '{}')
     }));
 
-  
     if (!isAdmin && empresasPermitidas.length > 0) {
         const filtradas = ocorrenciasFormatadas.filter(item => empresasPermitidas.includes(item.empresa));
         return res.json(filtradas);
