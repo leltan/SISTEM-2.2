@@ -11,6 +11,11 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+// DIAGNÓSTICO: mostra no log do Render se as variáveis existem (não mostra os valores)
+console.log('SUPABASE_URL definida?', !!supabaseUrl);
+console.log('SUPABASE_ANON_KEY definida?', !!supabaseKey);
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
@@ -20,7 +25,8 @@ app.use(bodyParser.json());
 // CAMINHO ESTÁTICO CORRIGIDO COM PATH.JOIN
 app.use(express.static(path.join(__dirname)));
 
-const JWT_SECRET = 'sico-chave-secreta-2026-v1';
+// Se existir a variável JWT_SECRET no Render, ela é usada. Senão, usa o valor antigo.
+const JWT_SECRET = process.env.JWT_SECRET || 'sico-chave-secreta-2026-v1';
 
 const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
 const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
@@ -57,19 +63,36 @@ function verificarToken(req, res, next) {
 }
 
 app.post('/api/login', async (req, res) => {
-    const { login, senha } = req.body;
-    
+    // Aceita "login" ou "usuario" vindo do front-end, para evitar erro de nome de campo
+    const loginRecebido = req.body.login || req.body.usuario || '';
+    const login = String(loginRecebido).trim();
+    const senha = req.body.senha || req.body.password || '';
+
+    // DIAGNÓSTICO (não mostra a senha)
+    console.log('LOGIN campos recebidos:', Object.keys(req.body || {}), '| login:', login);
+
+    if (!login || !senha) {
+        return res.status(400).json({ error: "Informe usuário e senha." });
+    }
+
     const { data: user, error } = await supabase
         .from('usuarios')
         .select('*')
         .eq('login', login)
         .single();
 
+    // DIAGNÓSTICO
+    console.log('LOGIN erro supabase:', error);
+    console.log('LOGIN usuário encontrado:', user ? 'sim' : 'não');
+
     if (error || !user) {
         return res.status(401).json({ error: "Usuário ou senha inválidos" });
     }
 
-    if (bcrypt.compareSync(senha, user.senha_hash)) {
+    const senhaOk = bcrypt.compareSync(String(senha), user.senha_hash);
+    console.log('LOGIN senha confere:', senhaOk);
+
+    if (senhaOk) {
         const token = jwt.sign(
             { login: user.login, role: user.role, nome: user.nome, empresas: user.empresas_permitidas || [] },
             JWT_SECRET,
@@ -320,7 +343,7 @@ app.get('/api/exportar', verificarToken, async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=\"relatorio_sico_v2.csv\"');
+    res.setHeader('Content-Disposition', 'attachment; filename="relatorio_sico_v2.csv"');
     res.send(csv);
 });
 
