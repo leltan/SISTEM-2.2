@@ -12,10 +12,6 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-// DIAGNÓSTICO: mostra no log do Render se as variáveis existem (não mostra os valores)
-console.log('SUPABASE_URL definida?', !!supabaseUrl);
-console.log('SUPABASE_ANON_KEY definida?', !!supabaseKey);
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
@@ -68,9 +64,6 @@ app.post('/api/login', async (req, res) => {
     const login = String(loginRecebido).trim();
     const senha = req.body.senha || req.body.password || '';
 
-    // DIAGNÓSTICO (não mostra a senha)
-    console.log('LOGIN campos recebidos:', Object.keys(req.body || {}), '| login:', login);
-
     if (!login || !senha) {
         return res.status(400).json({ error: "Informe usuário e senha." });
     }
@@ -81,17 +74,11 @@ app.post('/api/login', async (req, res) => {
         .eq('login', login)
         .single();
 
-    // DIAGNÓSTICO
-    console.log('LOGIN erro supabase:', error);
-    console.log('LOGIN usuário encontrado:', user ? 'sim' : 'não');
-
     if (error || !user) {
         return res.status(401).json({ error: "Usuário ou senha inválidos" });
     }
 
     const senhaOk = bcrypt.compareSync(String(senha), user.senha_hash);
-    console.log('LOGIN senha confere:', senhaOk);
-
     if (senhaOk) {
         const token = jwt.sign(
             { login: user.login, role: user.role, nome: user.nome, empresas: user.empresas_permitidas || [] },
