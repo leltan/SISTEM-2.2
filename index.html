@@ -13,33 +13,40 @@
 </head>
 <body>
 
-    <div id="login-screen" class="d-flex align-items-center justify-content-center">
-        <div class="login-overlay"></div>
-        <div class="card login-card p-4 fade-in-up">
-            <div class="text-center mb-4">
-                <h2 class="fw-bold text-primary">SICO <span class="text-dark">2.2</span></h2>
-                <h6 class="text-uppercase text-muted ls-2">Acesso Restrito</h6>
+
+    <div id="login-screen" class="login-background d-flex align-items-center justify-content-center">
+
+        <div class="login-overlay-dark"></div>
+        
+        <div class="glass-login-card p-5 fade-in-up position-relative z-1">
+            <div class="text-center mb-5 login-brand">
+                <h1 class="fw-bold text-white d-flex align-items-center justify-content-center gap-2 mb-0">
+                    <i class='bx bx-bus fs-1'></i> 
+                    <span class="brand-text">SICO</span>
+                </h1>
             </div>
+
             <form id="form-login">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Usuário</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class='bx bxs-user'></i></span>
-                        <input type="text" id="login-usuario" class="form-control" placeholder="Digite seu usuário..." required>
-                    </div>
+                <div class="mb-4 position-relative custom-input-group">
+                    <i class='bx bx-user input-icon'></i>
+                    <input type="text" id="login-usuario" class="form-control glass-input" placeholder="Usuário" required autocomplete="off">
                 </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-bold">Senha</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class='bx bxs-lock-alt'></i></span>
-                        <input type="password" id="login-senha" class="form-control" placeholder="Digite sua senha..." required>
-                    </div>
+                
+                <div class="mb-5 position-relative custom-input-group">
+                    <i class='bx bx-lock-alt input-icon'></i>
+                    <input type="password" id="login-senha" class="form-control glass-input pe-5" placeholder="Senha" required autocomplete="off">
+   
+                    <i class='bx bx-hide toggle-password position-absolute top-50 end-0 translate-middle-y me-3 text-muted cursor-pointer' id="btn-toggle-senha" style="cursor: pointer; z-index: 10;"></i>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">ENTRAR</button>
-                <div id="login-erro" class="text-danger small text-center mt-2 d-none">Usuário ou senha inválidos.</div>
+                
+                <button type="submit" class="btn btn-login w-100 fw-bold py-3 shadow-lg d-flex align-items-center justify-content-center gap-2">
+                    <i class='bx bx-right-arrow-alt fs-4'></i> Entrar
+                </button>
+                <div id="login-erro" class="text-danger small text-center mt-3 fw-bold d-none bg-danger bg-opacity-10 py-2 rounded border border-danger">Usuário ou senha inválidos.</div>
             </form>
         </div>
     </div>
+
 
     <div id="dashboard-screen" class="d-none">
         <nav class="sidebar p-3 d-flex flex-column justify-content-between">
