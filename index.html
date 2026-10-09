@@ -58,6 +58,8 @@
                 <ul class="nav flex-column gap-2">
                     <li class="nav-item"><a href="#" class="nav-link active"><i class='bx bxs-dashboard'></i> Visão Geral</a></li>
                     <li class="nav-item"><a href="#" class="nav-link"><i class='bx bxs-bus'></i> Frota & Linhas</a></li>
+                    <li class="nav-item d-none" id="menu-usuarios"><a href="#" class="nav-link" onclick="abrirGestaoUsuarios(); return false;"><i class='bx bxs-user-detail'></i> Gestão de Usuários</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link" onclick="abrirTrocarSenha(false); return false;"><i class='bx bx-key'></i> Alterar minha senha</a></li>
                 </ul>
             </div>
             <div>
@@ -69,7 +71,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 class="fw-bold text-dark mb-0">Controle Operacional</h4>
-                    <small class="text-muted">Fervima & Pirajuçara</small>
+                    <small class="text-muted" id="subtitulo-empresas">Carregando...</small>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-outline-success btn-sm" onclick="exportarCSV()"><i class='bx bxs-download'></i> Relatório CSV</button>
@@ -177,13 +179,13 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="fw-bold small">Prefixo *</label>
-                                    <input type="text" id="prefixo" class="form-control" placeholder="Ex: 890" onblur="verificarEmpresa()">
+                                    <select id="prefixo" class="form-select" onchange="verificarEmpresa()"><option value="">Selecione o prefixo...</option></select>
                                     <div id="empresa-badge" class="badge bg-secondary mt-1 w-100">---</div>
                                 </div>
                                 <div class="col-md-8">
                                     <label class="fw-bold small">Linha *</label>
                                     <select id="linha" class="form-select" disabled>
-                                        <option value="">Digite o Prefixo...</option>
+                                        <option value="">Selecione o prefixo...</option>
                                     </select>
                                 </div>
                             </div>
@@ -277,6 +279,13 @@
                         <div id="form-desvio" class="d-none animate-fade">
                             <div class="card p-3 mb-3 border-0 shadow-sm border-start border-4 border-info">
                                 <h6 class="text-info fw-bold border-bottom pb-2 mb-3"><i class='bx bxs-directions'></i> Dados do Desvio de Itinerário</h6>
+
+                                <div id="bloco-desv-empresa" class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="fw-bold small">Empresa *</label>
+                                        <select id="desv-empresa" class="form-select"></select>
+                                    </div>
+                                </div>
                                 
                                 <div class="row g-3 mb-3 bg-light p-2 rounded mx-1">
                                     <div class="col-md-3">
@@ -564,12 +573,9 @@
 
                                 <h6 class="text-dark fw-bold mt-4 border-bottom pb-1 small">EMPRESA E LINHA</h6>
                                 <div class="row g-3 mb-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="col-atr-empresa">
                                         <label class="fw-bold small">Empresa *</label>
                                         <select id="atr-empresa" class="form-select" onchange="atualizarLinhasAtraso()">
-                                            <option value="">Selecione...</option>
-                                            <option value="Fervima">Fervima</option>
-                                            <option value="Pirajuçara">Pirajuçara</option>
                                         </select>
                                     </div>
                                     <div class="col-md-5">
@@ -580,7 +586,7 @@
                                     </div>
                                     <div class="col-md-3">
                                         <label class="fw-bold small">Prefixo (Opcional)</label>
-                                        <input type="text" id="atr-prefixo" class="form-control" placeholder="Se for 1 carro">
+                                        <select id="atr-prefixo" class="form-select"><option value="">Vários / não informar</option></select>
                                     </div>
                                 </div>
 
@@ -642,6 +648,148 @@
                 </div>
                 <div class="modal-body p-4" id="corpo-detalhes"></div>
                 <div class="modal-footer bg-light" id="admin-actions"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalUsuarios" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class='bx bxs-user-detail'></i> Gestão de Usuários</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+
+                    <div id="usuarios-lista">
+                        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+                            <small class="text-muted">Crie logins, escolha as empresas de cada pessoa, redefina senhas e desative ou exclua quem saiu da empresa.</small>
+                            <button class="btn btn-primary btn-sm shadow text-nowrap" onclick="novoUsuario()"><i class='bx bx-user-plus'></i> Novo usuário</button>
+                        </div>
+                        <div class="card border-0 shadow-sm">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Login</th>
+                                            <th>Perfil</th>
+                                            <th>Empresas</th>
+                                            <th>Situação</th>
+                                            <th class="text-end">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-usuarios"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="usuarios-form" class="d-none">
+                        <form id="form-usuario" class="card border-0 shadow-sm p-4">
+                            <input type="hidden" id="usuario-id" value="">
+                            <h5 class="fw-bold mb-3" id="titulo-form-usuario">Novo usuário</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="fw-bold small">Nome completo *</label>
+                                    <input type="text" id="usuario-nome" class="form-control" required autocomplete="off">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold small">Login *</label>
+                                    <input type="text" id="usuario-login" class="form-control" required minlength="3" maxlength="40" pattern="[A-Za-z0-9._@\-]+" placeholder="Ex: joao.silva" autocomplete="off">
+                                    <div class="form-text">Sem espaços. Pode usar letras, números, ponto, traço e _.</div>
+                                </div>
+                                <div class="col-md-6" id="grupo-senha-usuario">
+                                    <label class="fw-bold small">Senha provisória *</label>
+                                    <div class="input-group">
+                                        <input type="text" id="usuario-senha" class="form-control" minlength="6" autocomplete="off">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="gerarSenhaNo('usuario-senha')">Gerar</button>
+                                    </div>
+                                    <div class="form-text">Mínimo de 6 caracteres. A pessoa será obrigada a trocar no primeiro acesso.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold small">Perfil *</label>
+                                    <select id="usuario-role" class="form-select" onchange="atualizarVisaoEmpresasForm()">
+                                        <option value="operador">Operador (agente CCO)</option>
+                                        <option value="admin">Administrador (acesso total)</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <div id="aviso-admin-empresas" class="alert alert-info small mb-0 d-none">O administrador enxerga as três empresas e tem acesso ao painel de gestão.</div>
+                                    <div id="bloco-empresas-usuario">
+                                        <label class="fw-bold small d-block mb-2">Empresas que esta pessoa pode acessar</label>
+                                        <div class="d-flex flex-wrap gap-2 mb-3">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="aplicarPreset('pirajucara')">Agente Pirajuçara (as 3 empresas)</button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="aplicarPreset('miracatiba')">Agente Miracatiba (só Cidade das Artes)</button>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-4">
+                                            <div class="form-check"><input class="form-check-input usuario-emp-check" type="checkbox" value="Fervima" id="emp-fervima"><label class="form-check-label" for="emp-fervima">Viação Fervima</label></div>
+                                            <div class="form-check"><input class="form-check-input usuario-emp-check" type="checkbox" value="Pirajuçara" id="emp-pirajucara"><label class="form-check-label" for="emp-pirajucara">Viação Pirajuçara</label></div>
+                                            <div class="form-check"><input class="form-check-input usuario-emp-check" type="checkbox" value="CDA" id="emp-cda" checked disabled><label class="form-check-label" for="emp-cda">Viação Cidade das Artes (todos têm acesso)</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn btn-light text-muted" onclick="mostrarVisaoUsuarios('lista')">Cancelar</button>
+                                <button type="submit" class="btn btn-primary fw-bold px-4">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="usuarios-reset" class="d-none">
+                        <form id="form-reset-senha" class="card border-0 shadow-sm p-4">
+                            <input type="hidden" id="reset-usuario-id" value="">
+                            <h5 class="fw-bold mb-1">Redefinir senha</h5>
+                            <p class="text-muted small mb-3">Usuário: <strong id="reset-usuario-nome"></strong></p>
+                            <label class="fw-bold small">Nova senha provisória *</label>
+                            <div class="input-group mb-2">
+                                <input type="text" id="reset-senha" class="form-control" minlength="6" required autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" onclick="gerarSenhaNo('reset-senha')">Gerar</button>
+                            </div>
+                            <div class="form-text mb-3">Mínimo de 6 caracteres. Anote e passe para a pessoa: no próximo acesso ela será obrigada a criar uma senha nova.</div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-light text-muted" onclick="mostrarVisaoUsuarios('lista')">Cancelar</button>
+                                <button type="submit" class="btn btn-primary fw-bold px-4">Redefinir senha</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTrocarSenha" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class='bx bx-lock-alt'></i> Alterar senha</h5>
+                </div>
+                <form id="form-trocar-senha">
+                    <div class="modal-body">
+                        <div id="aviso-troca-obrigatoria" class="alert alert-warning small d-none">Por segurança, crie uma senha nova para continuar usando o sistema.</div>
+                        <div class="mb-3">
+                            <label class="fw-bold small">Senha atual *</label>
+                            <input type="password" id="troca-senha-atual" class="form-control" required autocomplete="current-password">
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-bold small">Nova senha *</label>
+                            <input type="password" id="troca-senha-nova" class="form-control" required minlength="6" autocomplete="new-password">
+                            <div class="form-text">Mínimo de 6 caracteres.</div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="fw-bold small">Confirmar nova senha *</label>
+                            <input type="password" id="troca-senha-confirma" class="form-control" required minlength="6" autocomplete="new-password">
+                        </div>
+                        <div id="trocar-senha-erro" class="text-danger small fw-bold mt-2 d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="btn-sair-troca" class="btn btn-light text-muted d-none" onclick="logout()">Sair do sistema</button>
+                        <button type="button" id="btn-cancelar-troca" class="btn btn-light text-muted" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary fw-bold px-4">Salvar nova senha</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

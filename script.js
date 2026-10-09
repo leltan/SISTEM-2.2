@@ -2,37 +2,103 @@ const API_URL = '/api';
 
 let usuarioAtual = null;
 let listaOcorrencias = [];
+let listaUsuarios = [];
 
+// Frota e linhas liberadas para quem está logado. Vem do servidor (/api/frota).
+let frotaUsuario = { empresas: [], empresaUnica: null };
 
-const linhasFervima = ['Circular 02', 'Circular 03', 'Circular 04', 'Circular 07.1', 'Circular 07.2', 'Circular 08'];
-const linhasPirajucara = ['Circular 05', 'Circular 06', 'Circular 09', 'Circular 09.1'];
-const linhasCDA = [
-    'LINHA 01', 'LINHA 100', 'LINHA 01B', 'LINHA 01I', 'LINHA 02', 'LINHA 02A', 'LINHA 02B', 
-    'LINHA 02C', 'LINHA 02CI', 'LINHA 02D', 'LINHA 02DI', 'LINHA 03', 'LINHA 03A', 'LINHA 03CI', 
-    'LINHA 03I', 'LINHA 03/06', 'LINHA 04', 'LINHA 04A', 'LINHA 04HI', 'LINHA 05', 'LINHA 05I', 
-    'LINHA 06', 'LINHA 06A', 'LINHA 06AI', 'LINHA 06I', 'LINHA 07', 'LINHA 07A', 'LINHA 07I'
-];
-const todasLinhas = [...linhasFervima, ...linhasPirajucara, ...linhasCDA];
+const ESTILO_EMPRESA = {
+    'Fervima': { nome: 'FERVIMA', curto: 'Fervima', badge: 'badge-fervima', linha: 'linha-fervima' },
+    'Pirajuçara': { nome: 'PIRAJUÇARA', curto: 'Pirajuçara', badge: 'badge-pirajucara', linha: 'linha-pirajucara' },
+    'CDA': { nome: 'CIDADE DAS ARTES', curto: 'Cidade das Artes', badge: 'badge-cda', linha: 'linha-cda' }
+};
 
+function esc(texto) {
+    return String(texto === null || texto === undefined ? '' : texto)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
-const frotaFervima = ['677', '678', '679', '680', '681', '682', '683', '684', '686', '687', '688', '689', '690', '691', '692', '693', '694', '695', '697', '698', '699', '700', '701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '711', '712', '714', '715', '716', '717', '718', '719', '720', '721', '722', '723', '724', '725', '726', '727', '728', '729', '730', '731', '732', '733'];
-const frotaPirajucara = ['868', '869', '870', '871', '872', '873', '875', '877', '879', '880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899', '900', '901', '902', '903', '904', '906', '907', '908', '910', '911', '912', '913'];
-const frotaCDA = [
-    '3001', '3002', '3003', '3004', '3006', '3007', '3008', '3009', '3010', '3011', '3012', 
-    '3013', '3014', '3015', '3016', '3017', '3018', '3019', '3020', '3021', '3022', '3023', 
-    '3024', '3025', '3026', '3027', '3028', '3029', '3030', '3031', '3032', '3100', '3101', 
-    '3102', '3103', '3104', '3105', '3106', '3107', '3108', '3109', '3110', '3111', '3112', 
-    '3113', '3114', '3115', '3116', '3117', '3118', '3119', '3120', '3121', '3122', '3123', 
-    '3124', '3125', '3126', '3127', '3128', '3129', '3130', '3131', '3132', '3133', '3134', 
-    '3135', '3136', '3137', '3138', '3139'
-];
+function addOption(pai, valor, texto) {
+    const opt = document.createElement('option');
+    opt.value = valor;
+    opt.textContent = texto;
+    pai.appendChild(opt);
+    return opt;
+}
 
-function restaurarSessao() {
+function cabecalhoAuth(comJson) {
+    const h = { 'Authorization': `Bearer ${localStorage.getItem('sico_token')}` };
+    if (comJson) h['Content-Type'] = 'application/json';
+    return h;
+}
+
+function lerPayload(token) {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function empresaDoPrefixo(prefixo) {
+    const emp = frotaUsuario.empresas.find(e => e.prefixos.includes(prefixo));
+    return emp ? emp.chave : null;
+}
+
+async function carregarFrota() {
+    try {
+        const response = await fetch(`${API_URL}/frota`, { headers: cabecalhoAuth() });
+        if (response.status === 401 || response.status === 403) { logout(); return false; }
+        if (!response.ok) throw new Error('frota');
+        frotaUsuario = await response.json();
+        preencherListasFrota();
+        return true;
+    } catch (e) {
+        alert('Não foi possível carregar os dados do sistema. Atualize a página e tente novamente.');
+        return false;
+    }
+}
+
+// Monta os campos do formulário só com o que o usuário pode usar.
+function preencherListasFrota() {
+    const unica = frotaUsuario.empresaUnica;
+    const empresas = frotaUsuario.empresas;
+
+    document.getElementById('subtitulo-empresas').innerText = empresas.map(e => e.nome).join(' · ');
+
+    const selPrefixo = document.getElementById('prefixo');
+    selPrefixo.innerHTML = '';
+    addOption(selPrefixo, '', 'Selecione o prefixo...');
+    empresas.forEach(emp => {
+        let pai = selPrefixo;
+        if (!unica) {
+            pai = document.createElement('optgroup');
+            pai.label = emp.nome;
+            selPrefixo.appendChild(pai);
+        }
+        emp.prefixos.forEach(p => addOption(pai, p, p));
+    });
+
+    ['desv-empresa', 'atr-empresa'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        if (!unica) addOption(sel, '', 'Selecione...');
+        empresas.forEach(emp => addOption(sel, emp.chave, (ESTILO_EMPRESA[emp.chave] || {}).curto || emp.nome));
+    });
+
+    document.getElementById('bloco-desv-empresa').classList.toggle('d-none', !!unica);
+    document.getElementById('col-atr-empresa').classList.toggle('d-none', !!unica);
+
+    gerarCheckboxesLinhas();
+    verificarEmpresa();
+    atualizarLinhasAtraso();
+}
+
+async function restaurarSessao() {
     const token = localStorage.getItem('sico_token');
     if (!token) return;
 
     try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = lerPayload(token);
         if (payload.exp * 1000 < Date.now()) {
             logout();
             return;
@@ -41,8 +107,12 @@ function restaurarSessao() {
         document.getElementById('login-screen').classList.add('d-none');
         document.getElementById('dashboard-screen').classList.remove('d-none');
         document.getElementById('user-display').innerText = `Olá, ${usuarioAtual.nome}`;
+        document.getElementById('menu-usuarios').classList.toggle('d-none', usuarioAtual.role !== 'admin');
+
+        const frotaOk = await carregarFrota();
+        if (!frotaOk) return;
         carregarOcorrencias();
-        gerarCheckboxesLinhas();
+        if (localStorage.getItem('sico_trocar_senha') === '1') abrirTrocarSenha(true);
     } catch (e) {
         logout();
     }
@@ -63,15 +133,22 @@ document.getElementById('form-login').addEventListener('submit', async function(
 
         if (response.ok) {
             localStorage.setItem('sico_token', dados.token);
+            if (dados.precisaTrocarSenha) localStorage.setItem('sico_trocar_senha', '1');
+            else localStorage.removeItem('sico_trocar_senha');
             restaurarSessao();
         } else {
-            document.getElementById('login-erro').classList.remove('d-none');
+            const erroEl = document.getElementById('login-erro');
+            erroEl.textContent = (response.status === 400 || response.status === 401)
+                ? 'Usuário ou senha inválidos.'
+                : 'Erro no servidor. Tente novamente em instantes.';
+            erroEl.classList.remove('d-none');
         }
     } catch (error) { alert("Erro de conexão."); }
 });
 
 function logout() { 
     localStorage.removeItem('sico_token');
+    localStorage.removeItem('sico_trocar_senha');
     location.reload(); 
 }
 
@@ -84,25 +161,34 @@ function prepararNovaOcorrencia() {
     document.getElementById('container-vitimas').innerHTML = '';
     adicionarVitima(); 
 
+    verificarEmpresa();
+    atualizarLinhasAtraso();
     ajustarFormulario();
 }
 
 function gerarCheckboxesLinhas() {
     const container = document.getElementById('container-linhas-check');
-    if(container) {
-        container.innerHTML = '';
-        todasLinhas.forEach(linha => {
+    if (!container) return;
+    container.innerHTML = '';
+    frotaUsuario.empresas.forEach(emp => {
+        if (!frotaUsuario.empresaUnica) {
+            const titulo = document.createElement('div');
+            titulo.className = 'col-12 fw-bold small text-muted mt-2';
+            titulo.textContent = emp.nome;
+            container.appendChild(titulo);
+        }
+        emp.linhas.forEach(linha => {
             const div = document.createElement('div');
             div.className = 'col-6 col-md-4';
             div.innerHTML = `
                 <div class="form-check">
-                    <input class="form-check-input linha-checkbox" type="checkbox" value="${linha}" id="chk-${linha.replace(/[\s\/.]/g, '')}">
-                    <label class="form-check-label" for="chk-${linha.replace(/[\s\/.]/g, '')}">${linha}</label>
+                    <input class="form-check-input linha-checkbox" type="checkbox" value="${esc(linha)}" id="chk-${linha.replace(/[\s\/.]/g, '')}">
+                    <label class="form-check-label" for="chk-${linha.replace(/[\s\/.]/g, '')}">${esc(linha)}</label>
                 </div>
             `;
             container.appendChild(div);
         });
-    }
+    });
 }
 
 function verificarEmpresa() {
@@ -110,55 +196,49 @@ function verificarEmpresa() {
     const badge = document.getElementById('empresa-badge');
     const selectLinha = document.getElementById('linha');
 
-    selectLinha.innerHTML = '<option value="">Selecione...</option>';
-    
+    selectLinha.innerHTML = '';
+    addOption(selectLinha, '', 'Selecione...');
 
-    if (frotaFervima.includes(prefixo)) {
-        badge.innerText = "FERVIMA";
-        badge.className = "badge badge-fervima mt-1 w-100 shadow-sm";
+    const chave = empresaDoPrefixo(prefixo);
+    if (chave) {
+        const estilo = ESTILO_EMPRESA[chave];
+        const emp = frotaUsuario.empresas.find(e => e.chave === chave);
+        badge.innerText = estilo.nome;
+        badge.className = `badge ${estilo.badge} mt-1 w-100 shadow-sm`;
         selectLinha.disabled = false;
-        linhasFervima.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
-    } else if (frotaPirajucara.includes(prefixo)) {
-        badge.innerText = "PIRAJUÇARA";
-        badge.className = "badge badge-pirajucara mt-1 w-100 shadow-sm";
-        selectLinha.disabled = false;
-        linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
-    } else if (frotaCDA.includes(prefixo)) {
-        badge.innerText = "CIDADE DAS ARTES";
-        badge.className = "badge badge-cda mt-1 w-100 shadow-sm";
-        selectLinha.disabled = false;
-        linhasCDA.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
+        emp.linhas.forEach(l => addOption(selectLinha, l, l));
     } else {
         badge.innerText = "---";
         badge.className = "badge bg-secondary mt-1 w-100";
         selectLinha.disabled = true;
+        selectLinha.options[0].textContent = 'Selecione o prefixo...';
     }
+
+    if (frotaUsuario.empresaUnica) badge.classList.add('d-none');
 }
 
 function atualizarLinhasAtraso() {
-    const empresa = document.getElementById('atr-empresa').value;
+    const chave = document.getElementById('atr-empresa').value;
     const selectLinha = document.getElementById('atr-linha');
-    selectLinha.innerHTML = '<option value="">Selecione...</option>';
+    const selectPrefixo = document.getElementById('atr-prefixo');
+
+    selectLinha.innerHTML = '';
+    addOption(selectLinha, '', 'Selecione a empresa...');
     selectLinha.disabled = true;
 
-    if (empresa === 'Fervima') {
+    selectPrefixo.innerHTML = '';
+    addOption(selectPrefixo, '', 'Vários / não informar');
+
+    const emp = frotaUsuario.empresas.find(e => e.chave === chave);
+    if (emp) {
         selectLinha.disabled = false;
-        linhasFervima.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
-    } else if (empresa === 'Pirajuçara') {
-        selectLinha.disabled = false;
-        linhasPirajucara.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
-    } else if (empresa === 'CDA') {
-        selectLinha.disabled = false;
-        linhasCDA.forEach(l => selectLinha.innerHTML += `<option value="${l}">${l}</option>`);
+        selectLinha.options[0].textContent = 'Selecione...';
+        emp.linhas.forEach(l => addOption(selectLinha, l, l));
+        emp.prefixos.forEach(p => addOption(selectPrefixo, p, p));
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const selectAtrEmpresa = document.getElementById('atr-empresa');
-    if (selectAtrEmpresa && !selectAtrEmpresa.querySelector('option[value="CDA"]')) {
-        selectAtrEmpresa.innerHTML += `<option value="CDA">Cidade das Artes</option>`;
-    }
-
 
     const btnToggleSenha = document.getElementById('btn-toggle-senha');
     const inputSenha = document.getElementById('login-senha');
@@ -207,6 +287,7 @@ function ajustarFormulario() {
     } 
     else if (tipo === 'Desvio') {
         document.getElementById('form-desvio').classList.remove('d-none');
+        document.getElementById('desv-empresa').required = true;
         document.getElementById('desv-data-inicio').required = true;
         document.getElementById('desv-hora-inicio').required = true;
         document.getElementById('desv-municipio').required = true;
@@ -363,6 +444,7 @@ document.getElementById('form-ocorrencia').addEventListener('submit', async func
         const linhasMarcadas = [];
         document.querySelectorAll('.linha-checkbox:checked').forEach(chk => linhasMarcadas.push(chk.value));
         
+        payload.empresa = document.getElementById('desv-empresa').value;
         payload.prefixo = "VÁRIOS"; 
         payload.linha = linhasMarcadas.join(', '); 
         payload.desvCarros = document.getElementById('desv-carros').value;
@@ -538,6 +620,7 @@ function editarOcorrencia(id) {
             } else { adicionarVitima(); }
         }
     } else if (item.tipo === 'Desvio') {
+        document.getElementById('desv-empresa').value = item.empresa || '';
         const linhasAfetadas = item.linha ? item.linha.split(', ') : [];
         document.querySelectorAll('.linha-checkbox').forEach(chk => {
             chk.checked = linhasAfetadas.includes(chk.value);
@@ -546,6 +629,7 @@ function editarOcorrencia(id) {
         document.getElementById('atr-empresa').value = item.empresa || '';
         atualizarLinhasAtraso();
         setTimeout(() => { document.getElementById('atr-linha').value = item.linha || ''; }, 100);
+        document.getElementById('atr-prefixo').value = (item.prefixo && item.prefixo !== 'VÁRIOS') ? item.prefixo : '';
     }
 
     const modalDetalhesEl = document.getElementById('modalDetalhes');
@@ -793,14 +877,7 @@ function renderizarTabela(dados) {
         let hora = item.mecHoraInicio || item.desvHoraInicio || item.colHoraInicio || item.atrHoraInicio || '--:--';
         let local = item.mecLocal || item.desvLocal || item.colLocal || item.atrLocal || '---';
 
-        let classeLinhaEmpresa = '';
-        if (frotaFervima.includes(item.prefixo)) {
-            classeLinhaEmpresa = 'linha-fervima';
-        } else if (frotaPirajucara.includes(item.prefixo)) {
-            classeLinhaEmpresa = 'linha-pirajucara';
-        } else if (frotaCDA.includes(item.prefixo)) {
-            classeLinhaEmpresa = 'linha-cda';
-        }
+        const classeLinhaEmpresa = (ESTILO_EMPRESA[item.empresa] || {}).linha || '';
 
         const tr = `
             <tr class="${classeLinhaEmpresa}">
@@ -861,7 +938,7 @@ function aplicarFiltros() {
     const buscaStatus = document.getElementById('filtro-status').value;
 
     const filtrados = listaOcorrencias.filter(item => {
-        const matchPrefixo = item.prefixo.toLowerCase().includes(buscaPrefixo) || (item.desvCarros && item.desvCarros.includes(buscaPrefixo));
+        const matchPrefixo = (item.prefixo || '').toLowerCase().includes(buscaPrefixo) || (item.desvCarros && item.desvCarros.includes(buscaPrefixo));
         const matchLinha = (item.linha || '').toLowerCase().includes(buscaLinha);
         const matchTipo = buscaTipo === "" || item.tipo === buscaTipo;
         const statusItem = item.status || 'Pendente';
@@ -938,5 +1015,257 @@ async function exportarCSV() {
         alert("Erro ao exportar o CSV. Você está logado?");
     }
 }
+
+// ===================== GESTÃO DE USUÁRIOS (somente admin) =====================
+function mostrarVisaoUsuarios(visao) {
+    ['lista', 'form', 'reset'].forEach(v => {
+        document.getElementById('usuarios-' + v).classList.toggle('d-none', v !== visao);
+    });
+}
+
+function abrirGestaoUsuarios() {
+    if (!usuarioAtual || usuarioAtual.role !== 'admin') return;
+    mostrarVisaoUsuarios('lista');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUsuarios')).show();
+    carregarUsuarios();
+}
+
+async function carregarUsuarios() {
+    try {
+        const response = await fetch(`${API_URL}/usuarios`, { headers: cabecalhoAuth() });
+        if (response.status === 401 || response.status === 403) { logout(); return; }
+        if (!response.ok) throw new Error('usuarios');
+        listaUsuarios = await response.json();
+        renderizarUsuarios();
+    } catch (e) {
+        alert('Erro ao carregar a lista de usuários.');
+    }
+}
+
+function renderizarUsuarios() {
+    const tbody = document.getElementById('tabela-usuarios');
+    tbody.innerHTML = listaUsuarios.map(u => {
+        const eu = u.login === usuarioAtual.login;
+        const empresas = u.role === 'admin'
+            ? 'Todas'
+            : u.empresas.map(e => (ESTILO_EMPRESA[e] || {}).curto || e).join(', ');
+        const situacao = u.ativo
+            ? '<span class="badge bg-success">Ativo</span>'
+            : '<span class="badge bg-secondary">Desativado</span>';
+        const provisoria = u.precisaTrocarSenha
+            ? ' <span class="badge bg-warning text-dark" title="Ainda não trocou a senha provisória">Senha provisória</span>'
+            : '';
+        const botoesRestritos = eu ? '' : `
+            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="alternarAtivo('${u.id}', ${!u.ativo})" title="${u.ativo ? 'Desativar' : 'Reativar'}">
+                <i class='bx ${u.ativo ? 'bx-block' : 'bx-check-circle'}'></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger ms-1" onclick="excluirUsuario('${u.id}')" title="Excluir"><i class='bx bx-trash'></i></button>`;
+        return `
+            <tr class="${u.ativo ? '' : 'text-muted'}">
+                <td class="fw-bold">${esc(u.nome)}${eu ? ' <small class="text-muted">(você)</small>' : ''}</td>
+                <td>${esc(u.login)}</td>
+                <td>${u.role === 'admin' ? 'Administrador' : 'Operador'}</td>
+                <td><small>${esc(empresas)}</small></td>
+                <td>${situacao}${provisoria}</td>
+                <td class="text-end text-nowrap">
+                    <button class="btn btn-sm btn-light border text-primary" onclick="editarUsuario('${u.id}')" title="Editar"><i class='bx bx-edit-alt'></i></button>
+                    <button class="btn btn-sm btn-light border ms-1" onclick="abrirResetSenha('${u.id}')" title="Redefinir senha"><i class='bx bx-key'></i></button>
+                    ${botoesRestritos}
+                </td>
+            </tr>`;
+    }).join('');
+}
+
+function definirEmpresasForm(lista) {
+    document.querySelectorAll('.usuario-emp-check').forEach(c => {
+        c.checked = c.value === 'CDA' || lista.includes(c.value);
+    });
+}
+
+function atualizarVisaoEmpresasForm() {
+    const admin = document.getElementById('usuario-role').value === 'admin';
+    document.getElementById('bloco-empresas-usuario').classList.toggle('d-none', admin);
+    document.getElementById('aviso-admin-empresas').classList.toggle('d-none', !admin);
+}
+
+function aplicarPreset(tipo) {
+    definirEmpresasForm(tipo === 'pirajucara' ? ['Fervima', 'Pirajuçara', 'CDA'] : ['CDA']);
+}
+
+function gerarSenhaNo(idCampo) {
+    const letras = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const sorteio = new Uint32Array(8);
+    crypto.getRandomValues(sorteio);
+    document.getElementById(idCampo).value = Array.from(sorteio, n => letras[n % letras.length]).join('');
+}
+
+function novoUsuario() {
+    document.getElementById('form-usuario').reset();
+    document.getElementById('usuario-id').value = '';
+    document.getElementById('titulo-form-usuario').innerText = 'Novo usuário';
+    document.getElementById('usuario-login').disabled = false;
+    document.getElementById('grupo-senha-usuario').classList.remove('d-none');
+    document.getElementById('usuario-senha').required = true;
+    definirEmpresasForm(['CDA']);
+    atualizarVisaoEmpresasForm();
+    mostrarVisaoUsuarios('form');
+}
+
+function editarUsuario(id) {
+    const u = listaUsuarios.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('form-usuario').reset();
+    document.getElementById('usuario-id').value = u.id;
+    document.getElementById('titulo-form-usuario').innerText = 'Editar usuário';
+    document.getElementById('usuario-nome').value = u.nome;
+    document.getElementById('usuario-login').value = u.login;
+    document.getElementById('usuario-login').disabled = true;
+    document.getElementById('usuario-role').value = u.role;
+    document.getElementById('grupo-senha-usuario').classList.add('d-none');
+    document.getElementById('usuario-senha').required = false;
+    definirEmpresasForm(u.empresas);
+    atualizarVisaoEmpresasForm();
+    mostrarVisaoUsuarios('form');
+}
+
+document.getElementById('form-usuario').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('usuario-id').value;
+    const corpo = {
+        nome: document.getElementById('usuario-nome').value.trim(),
+        role: document.getElementById('usuario-role').value,
+        empresasPermitidas: Array.from(document.querySelectorAll('.usuario-emp-check:checked')).map(c => c.value)
+    };
+    let url = `${API_URL}/usuarios`;
+    let method = 'POST';
+    if (id) {
+        url += `/${id}`;
+        method = 'PUT';
+    } else {
+        corpo.login = document.getElementById('usuario-login').value.trim();
+        corpo.senha = document.getElementById('usuario-senha').value;
+    }
+
+    try {
+        const response = await fetch(url, { method, headers: cabecalhoAuth(true), body: JSON.stringify(corpo) });
+        const dados = await response.json().catch(() => ({}));
+        if (response.ok) {
+            mostrarVisaoUsuarios('lista');
+            carregarUsuarios();
+            alert(id ? '✅ Usuário atualizado!' : '✅ Usuário criado! Ele precisará trocar a senha no primeiro acesso.');
+        } else {
+            alert('❌ ' + (dados.error || 'Erro ao salvar o usuário.'));
+        }
+    } catch (err) {
+        alert('Erro de conexão com o servidor.');
+    }
+});
+
+function abrirResetSenha(id) {
+    const u = listaUsuarios.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('reset-usuario-id').value = u.id;
+    document.getElementById('reset-usuario-nome').innerText = `${u.nome} (${u.login})`;
+    document.getElementById('reset-senha').value = '';
+    mostrarVisaoUsuarios('reset');
+}
+
+document.getElementById('form-reset-senha').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('reset-usuario-id').value;
+    const senhaNova = document.getElementById('reset-senha').value;
+    try {
+        const response = await fetch(`${API_URL}/usuarios/${id}/resetar-senha`, {
+            method: 'POST',
+            headers: cabecalhoAuth(true),
+            body: JSON.stringify({ senhaNova })
+        });
+        const dados = await response.json().catch(() => ({}));
+        if (response.ok) {
+            alert(`✅ Senha redefinida!\n\nNova senha provisória: ${senhaNova}\n\nPasse para a pessoa. No próximo acesso ela terá que criar uma senha nova.`);
+            mostrarVisaoUsuarios('lista');
+            carregarUsuarios();
+        } else {
+            alert('❌ ' + (dados.error || 'Erro ao redefinir a senha.'));
+        }
+    } catch (err) {
+        alert('Erro de conexão com o servidor.');
+    }
+});
+
+async function alternarAtivo(id, ativo) {
+    const u = listaUsuarios.find(x => x.id === id);
+    if (!u) return;
+    const pergunta = ativo
+        ? `Reativar o acesso de ${u.nome}?`
+        : `Desativar o acesso de ${u.nome}? Ela perde o acesso na hora, mas o histórico das ocorrências é mantido.`;
+    if (!confirm(pergunta)) return;
+    try {
+        const response = await fetch(`${API_URL}/usuarios/${id}`, {
+            method: 'PUT',
+            headers: cabecalhoAuth(true),
+            body: JSON.stringify({ ativo })
+        });
+        const dados = await response.json().catch(() => ({}));
+        if (!response.ok) alert('❌ ' + (dados.error || 'Erro ao alterar o usuário.'));
+        carregarUsuarios();
+    } catch (err) {
+        alert('Erro de conexão com o servidor.');
+    }
+}
+
+async function excluirUsuario(id) {
+    const u = listaUsuarios.find(x => x.id === id);
+    if (!u) return;
+    if (!confirm(`Excluir DEFINITIVAMENTE o login de ${u.nome} (${u.login})?\n\nSe preferir apenas bloquear o acesso, use o botão "Desativar".`)) return;
+    try {
+        const response = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE', headers: cabecalhoAuth() });
+        const dados = await response.json().catch(() => ({}));
+        if (!response.ok) alert('❌ ' + (dados.error || 'Erro ao excluir o usuário.'));
+        carregarUsuarios();
+    } catch (err) {
+        alert('Erro de conexão com o servidor.');
+    }
+}
+
+// ===================== TROCA DE SENHA =====================
+function abrirTrocarSenha(obrigatoria) {
+    document.getElementById('form-trocar-senha').reset();
+    document.getElementById('trocar-senha-erro').classList.add('d-none');
+    document.getElementById('aviso-troca-obrigatoria').classList.toggle('d-none', !obrigatoria);
+    document.getElementById('btn-sair-troca').classList.toggle('d-none', !obrigatoria);
+    document.getElementById('btn-cancelar-troca').classList.toggle('d-none', !!obrigatoria);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTrocarSenha')).show();
+}
+
+document.getElementById('form-trocar-senha').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const erroEl = document.getElementById('trocar-senha-erro');
+    const senhaAtual = document.getElementById('troca-senha-atual').value;
+    const senhaNova = document.getElementById('troca-senha-nova').value;
+    const confirmacao = document.getElementById('troca-senha-confirma').value;
+
+    const mostrarErro = msg => { erroEl.textContent = msg; erroEl.classList.remove('d-none'); };
+    if (senhaNova.length < 6) return mostrarErro('A nova senha precisa ter pelo menos 6 caracteres.');
+    if (senhaNova !== confirmacao) return mostrarErro('A confirmação não é igual à nova senha.');
+
+    try {
+        const response = await fetch(`${API_URL}/minha-senha`, {
+            method: 'POST',
+            headers: cabecalhoAuth(true),
+            body: JSON.stringify({ senhaAtual, senhaNova })
+        });
+        const dados = await response.json().catch(() => ({}));
+        if (response.ok) {
+            localStorage.removeItem('sico_trocar_senha');
+            bootstrap.Modal.getInstance(document.getElementById('modalTrocarSenha')).hide();
+            alert('✅ Senha alterada com sucesso!');
+        } else {
+            mostrarErro(dados.error || 'Erro ao alterar a senha.');
+        }
+    } catch (err) {
+        mostrarErro('Erro de conexão com o servidor.');
+    }
+});
 
 restaurarSessao();
