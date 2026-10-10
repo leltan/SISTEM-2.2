@@ -65,6 +65,22 @@ function preencherListasFrota() {
 
     document.getElementById('subtitulo-empresas').innerText = empresas.map(e => e.nome).join(' · ');
 
+    // Logos no menu lateral: só das empresas que o usuário pode ver
+    const caixaLogos = document.getElementById('logos-empresas');
+    caixaLogos.innerHTML = '';
+    [
+        { chave: 'Pirajuçara', src: 'img/logo-piraju.png', alt: 'Viação Pirajuçara', estilo: 'height:42px;width:42px;background:#ececf3;border-radius:50%;padding:3px;' },
+        { chave: 'CDA', src: 'img/logo-cda.png', alt: 'Viação Cidade das Artes', estilo: 'height:42px;width:auto;border-radius:8px;' }
+    ].forEach(l => {
+        if (!empresas.some(e => e.chave === l.chave)) return;
+        const img = document.createElement('img');
+        img.src = l.src;
+        img.alt = l.alt;
+        img.title = l.alt;
+        img.style.cssText = l.estilo + 'object-fit:contain;';
+        caixaLogos.appendChild(img);
+    });
+
     const selPrefixo = document.getElementById('prefixo');
     selPrefixo.innerHTML = '';
     addOption(selPrefixo, '', 'Selecione o prefixo...');
