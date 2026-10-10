@@ -1457,7 +1457,7 @@ function iniciarPickers() {
                 inst.calendarContainer.appendChild(b);
             }
         }, ehHora
-            ? { enableTime: true, noCalendar: true, dateFormat: 'H:i', altFormat: 'H:i', time_24hr: true }
+            ? { enableTime: true, noCalendar: true, dateFormat: 'H:i', altFormat: 'H:i', time_24hr: true, minuteIncrement: 1 }
             : { dateFormat: 'Y-m-d', altFormat: 'd/m/Y' }));
         if (!fp || !fp.altInput) return;
         fp.altInput.placeholder = ehHora ? 'hh:mm' : 'dd/mm/aaaa';
