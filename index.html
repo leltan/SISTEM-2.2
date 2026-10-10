@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d0d14">
+    <script>(function(){try{var t=localStorage.getItem("sico_tema");if(!t){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";}document.documentElement.setAttribute("data-bs-theme",t);}catch(e){}})();</script>
     <title>SICO 2.2 | Gestão Integrada</title>
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
     <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -11,6 +13,7 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -51,6 +54,7 @@
 
 
     <div id="dashboard-screen" class="d-none">
+        <div id="menu-overlay" class="menu-overlay" onclick="alternarMenu(false)"></div>
         <nav class="sidebar p-3 d-flex flex-column justify-content-between">
             <div>
                 <div class="brand mb-5">
@@ -70,13 +74,17 @@
             </div>
         </nav>
 
-        <main class="content p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h4 class="fw-bold text-dark mb-0">Controle Operacional</h4>
-                    <small class="text-muted" id="subtitulo-empresas">Carregando...</small>
+        <main class="content p-3 p-lg-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div class="d-flex align-items-center gap-3">
+                    <button type="button" class="btn btn-icon d-lg-none" onclick="alternarMenu()" aria-label="Abrir menu"><i class='bx bx-menu'></i></button>
+                    <div>
+                        <h4 class="fw-bold mb-0">Controle Operacional</h4>
+                        <small class="text-muted" id="subtitulo-empresas">Carregando...</small>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button type="button" id="btn-tema" class="btn btn-icon" onclick="alternarTema()" title="Alternar tema claro/escuro" aria-label="Alternar tema"><i class='bx bx-sun'></i></button>
                     <button class="btn btn-outline-success btn-sm" onclick="exportarCSV()"><i class='bx bxs-download'></i> Relatório CSV</button>
                     <button class="btn btn-success btn-sm" onclick="gerarRelatorioZap()"><i class='bx bxl-whatsapp'></i> Copiar Resumo</button>
                     <button class="btn btn-primary btn-sm shadow" data-bs-toggle="modal" data-bs-target="#modalOcorrencia" onclick="prepararNovaOcorrencia()"><i class='bx bx-plus-circle'></i> Nova Ocorrência</button>
@@ -84,28 +92,28 @@
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-3">
+                <div class="col-6 col-xl-3">
                     <div class="card border-0 shadow-sm p-3 border-start border-4 border-primary">
                         <small class="text-muted fw-bold">TOTAL HOJE</small>
                         <h3 class="fw-bold mb-0" id="kpi-total">0</h3>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-6 col-xl-3">
                     <div class="card border-0 shadow-sm p-3 border-start border-4 border-warning">
                         <small class="text-muted fw-bold">PENDENTES</small>
                         <h3 class="fw-bold mb-0" id="kpi-pendentes">0</h3>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-xl-6">
                     <div class="card border-0 shadow-sm p-2 h-100 d-flex justify-content-center">
                         <div class="row g-2 align-items-center">
-                            <div class="col-2">
+                            <div class="col-6 col-sm-3 col-xl-2">
                                 <input type="text" id="filtro-prefixo" class="form-control form-control-sm" placeholder="Prefixo...">
                             </div>
-                            <div class="col-2">
+                            <div class="col-6 col-sm-3 col-xl-2">
                                 <input type="text" id="filtro-linha" class="form-control form-control-sm" placeholder="Linha...">
                             </div>
-                            <div class="col-3">
+                            <div class="col-6 col-sm-3 col-xl-3">
                                 <select id="filtro-tipo" class="form-select form-select-sm">
                                     <option value="">Todos Tipos</option>
                                     <option value="Mecânica">Falha Mecânica</option>
@@ -114,14 +122,14 @@
                                     <option value="Atraso">Atraso</option>
                                 </select>
                             </div>
-                            <div class="col-3">
+                            <div class="col-6 col-sm-3 col-xl-3">
                                 <select id="filtro-status" class="form-select form-select-sm">
                                     <option value="">Status...</option>
                                     <option value="Pendente">Pendente</option>
                                     <option value="Finalizada">Finalizada</option>
                                 </select>
                             </div>
-                            <div class="col-2">
+                            <div class="col-6 col-sm-3 col-xl-2">
                                 <button class="btn btn-secondary btn-sm w-100" onclick="aplicarFiltros()"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
@@ -161,11 +169,22 @@
                     <form id="form-ocorrencia">
                         <input type="hidden" id="ocorrencia-id" value="">
                         
-                        <div class="card p-3 mb-3 border-0 shadow-sm">
+                        <div id="picker-tipos" class="animate-fade">
+                            <p class="fw-bold small text-uppercase sc-label mb-3">Qual o tipo da ocorrência?</p>
                             <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label class="fw-bold small text-primary">QUAL O TIPO DA OCORRÊNCIA?</label>
-                                    <select id="tipo" class="form-select form-select-lg fw-bold" required onchange="ajustarFormulario()">
+                                <div class="col-6"><button type="button" class="tipo-card tipo-mecanica" onclick="selecionarTipo('Mecânica')"><i class='bx bxs-wrench'></i><span>Falha Mecânica</span><small>SOS</small></button></div>
+                                <div class="col-6"><button type="button" class="tipo-card tipo-desvio" onclick="selecionarTipo('Desvio')"><i class='bx bxs-directions'></i><span>Desvio</span><small>de itinerário</small></button></div>
+                                <div class="col-6"><button type="button" class="tipo-card tipo-colisao" onclick="selecionarTipo('Colisão')"><i class='bx bxs-car-crash'></i><span>Colisão</span><small>acidente</small></button></div>
+                                <div class="col-6"><button type="button" class="tipo-card tipo-atraso" onclick="selecionarTipo('Atraso')"><i class='bx bxs-time-five'></i><span>Atraso</span><small>de partida</small></button></div>
+                            </div>
+                        </div>
+
+                        <div id="tipo-escolhido" class="tipo-chip-bar d-none">
+                            <span class="tipo-chip"><i class='bx bx-label'></i><span id="tipo-chip-texto"></span></span>
+                            <button type="button" id="btn-trocar-tipo" class="btn btn-sm btn-outline-secondary" onclick="trocarTipo()"><i class='bx bx-refresh'></i> Trocar tipo</button>
+                        </div>
+
+                        <select id="tipo" class="d-none" required onchange="ajustarFormulario()">
                                         <option value="" selected disabled>-- Selecione --</option>
                                         <option value="Mecânica">Falha Mecânica (SOS)</option>
                                         <option value="Desvio">Desvio de Itinerário</option>
@@ -173,9 +192,6 @@
                                         <option value="Atraso">Atraso de Partida</option>
                                         <option value="Segurança">Segurança / Vandalismo</option>
                                     </select>
-                                </div>
-                            </div>
-                        </div>
 
                         <div id="bloco-padrao" class="card p-3 mb-3 border-0 shadow-sm d-none">
                             <h6 class="text-muted fw-bold border-bottom pb-2 mb-3">Identificação do Veículo</h6>
@@ -629,10 +645,10 @@
                         </div>
 
                         <div id="form-generico" class="d-none">
-                            <div class="alert alert-info">Formulário em desenvolvimento...</div>
+                            
                         </div>
 
-                        <div class="modal-footer px-0 pb-0 mt-3 border-top-0">
+                        <div id="rodape-ocorrencia" class="modal-footer px-0 pb-0 mt-3 border-top-0 d-none">
                             <button type="button" class="btn btn-light text-muted" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-primary fw-bold px-4">Salvar</button>
                         </div>
@@ -798,6 +814,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -170,6 +170,7 @@ function logout() {
 
 function prepararNovaOcorrencia() {
     document.getElementById('form-ocorrencia').reset();
+    limparPickers();
     document.getElementById('ocorrencia-id').value = "";
     document.getElementById('titulo-modal-ocorrencia').innerHTML = "<i class='bx bx-plus-circle'></i> Nova Ocorrência";
     document.getElementById('tipo').disabled = false;
@@ -336,11 +337,7 @@ function ajustarFormulario() {
         document.getElementById('atr-sentido').required = true;
         document.getElementById('atr-motivo').required = true;
     }
-    else {
-        document.getElementById('bloco-padrao').classList.remove('d-none');
-        document.getElementById('form-generico').classList.remove('d-none');
-        document.getElementById('prefixo').required = true;
-    }
+    atualizarEstadoPicker();
 }
 
 function verificarProvidencia() {
@@ -553,6 +550,10 @@ document.getElementById('form-ocorrencia').addEventListener('submit', async func
         payload.status = (payload.atrHoraFim || payload.atrDataFim) ? "Finalizada" : "Pendente";
     }
 
+    const btnSalvar = e.submitter || document.querySelector('#form-ocorrencia button[type="submit"]');
+    const textoBtn = btnSalvar.innerHTML;
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = "<span class='spinner-border spinner-border-sm me-2'></span>Salvando...";
     try {
         const token = localStorage.getItem('sico_token');
         const url = idOcorrencia ? `${API_URL}/ocorrencias/${idOcorrencia}` : `${API_URL}/ocorrencias`;
@@ -574,10 +575,13 @@ document.getElementById('form-ocorrencia').addEventListener('submit', async func
             carregarOcorrencias();
         } else {
             const erro = await response.json();
-            alert("❌ Erro ao salvar: " + JSON.stringify(erro));
+            alert("❌ Não foi possível salvar: " + (erro.error || "tente novamente."));
         }
     } catch (error) { 
-        alert("Erro servidor. Verifique o console."); 
+        alert("Erro de conexão com o servidor. Tente novamente.");
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = textoBtn;
     }
 });
 
@@ -609,6 +613,8 @@ function editarOcorrencia(id) {
             input.value = item[key] !== null && item[key] !== undefined ? item[key] : '';
         }
     }
+
+    sincronizarPickers();
 
     if (item.tipo === 'Mecânica' || item.tipo === 'Colisão') {
         if (item.prefixo && item.prefixo !== 'VÁRIOS') {
@@ -867,6 +873,7 @@ function verDetalhes(id) {
 }
 
 async function carregarOcorrencias() {
+    mostrarSkeleton();
     try {
         const token = localStorage.getItem('sico_token');
         const response = await fetch(`${API_URL}/ocorrencias`, {
@@ -886,7 +893,12 @@ async function carregarOcorrencias() {
 
 function renderizarTabela(dados) {
     const tbody = document.getElementById('tabela-corpo');
-    tbody.innerHTML = '';
+    const linhas = [];
+
+    if (dados.length === 0) {
+        tbody.innerHTML = '<tr class="estado-vazio"><td colspan="7"><i class=\'bx bx-folder-open fs-1 d-block mb-2\'></i>Nenhuma ocorrência encontrada.</td></tr>';
+        return;
+    }
 
     dados.forEach(item => {
         let statusColor = item.status === 'Finalizada' ? 'bg-success' : 'bg-danger';
@@ -897,15 +909,15 @@ function renderizarTabela(dados) {
 
         const tr = `
             <tr class="${classeLinhaEmpresa}">
-                <td class="ps-4 fw-bold text-primary">${item.protocolo}</td>
-                <td>${hora}</td>
-                <td>
+                <td class="ps-4 fw-bold text-primary" data-label="Protocolo">${item.protocolo}</td>
+                <td data-label="Início">${hora}</td>
+                <td data-label="Carro / Linha">
                     <div class="fw-bold">${item.prefixo}</div>
                     <small class="text-muted text-wrap" style="font-size: 0.75rem">${item.linha || '---'}</small>
                 </td>
-                <td>${item.tipo}</td>
-                <td><small>${local}</small></td>
-                <td><span class="badge ${statusColor}">${item.status || 'Pendente'}</span></td>
+                <td data-label="Tipo">${item.tipo}</td>
+                <td data-label="Local"><small>${local}</small></td>
+                <td data-label="Status"><span class="badge ${statusColor}">${item.status || 'Pendente'}</span></td>
                 <td class="text-end pe-4">
                     <button class="btn btn-sm btn-light border text-primary" onclick="verDetalhes('${item.id}')" title="Ver Detalhes"><i class='bx bx-show'></i></button>
                     <button class="btn btn-sm btn-warning text-dark ms-1 shadow-sm" onclick="editarOcorrencia('${item.id}')" title="Editar"><i class='bx bx-edit-alt'></i></button>
@@ -913,12 +925,13 @@ function renderizarTabela(dados) {
                 </td>
             </tr>
         `;
-        tbody.innerHTML += tr;
+        linhas.push(tr);
     });
+    tbody.innerHTML = linhas.join('');
 }
 
 async function excluirOcorrencia(id) {
-    if(!confirm("Tem certeza que deseja APAGAR esta ocorrência definitivamente?")) return;
+    if (!(await confirmar("Tem certeza que deseja APAGAR esta ocorrência definitivamente?", { perigo: true }))) return;
     
     try {
         const token = localStorage.getItem('sico_token');
@@ -1215,7 +1228,7 @@ async function alternarAtivo(id, ativo) {
     const pergunta = ativo
         ? `Reativar o acesso de ${u.nome}?`
         : `Desativar o acesso de ${u.nome}? Ela perde o acesso na hora, mas o histórico das ocorrências é mantido.`;
-    if (!confirm(pergunta)) return;
+    if (!(await confirmar(pergunta, { perigo: true }))) return;
     try {
         const response = await fetch(`${API_URL}/usuarios/${id}`, {
             method: 'PUT',
@@ -1233,7 +1246,7 @@ async function alternarAtivo(id, ativo) {
 async function excluirUsuario(id) {
     const u = listaUsuarios.find(x => x.id === id);
     if (!u) return;
-    if (!confirm(`Excluir DEFINITIVAMENTE o login de ${u.nome} (${u.login})?\n\nSe preferir apenas bloquear o acesso, use o botão "Desativar".`)) return;
+    if (!(await confirmar(`Excluir DEFINITIVAMENTE o login de ${u.nome} (${u.login})?\n\nSe preferir apenas bloquear o acesso, use o botão "Desativar".`, { perigo: true }))) return;
     try {
         const response = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE', headers: cabecalhoAuth() });
         const dados = await response.json().catch(() => ({}));
@@ -1283,5 +1296,192 @@ document.getElementById('form-trocar-senha').addEventListener('submit', async fu
         mostrarErro('Erro de conexão com o servidor.');
     }
 });
+
+// ===================== TEMA CLARO / ESCURO =====================
+function atualizarIconeTema() {
+    const tema = document.documentElement.getAttribute('data-bs-theme') || 'dark';
+    const icone = document.querySelector('#btn-tema i');
+    if (icone) icone.className = tema === 'dark' ? 'bx bx-sun' : 'bx bx-moon';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', tema === 'dark' ? '#0d0d14' : '#f4f3fa');
+}
+
+function alternarTema() {
+    const atual = document.documentElement.getAttribute('data-bs-theme') || 'dark';
+    const novo = atual === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', novo);
+    try { localStorage.setItem('sico_tema', novo); } catch (e) {}
+    atualizarIconeTema();
+}
+
+// ===================== MENU LATERAL (CELULAR) =====================
+function alternarMenu(forcar) {
+    const abrir = typeof forcar === 'boolean' ? forcar : !document.body.classList.contains('menu-open');
+    document.body.classList.toggle('menu-open', abrir);
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(a => a.addEventListener('click', () => alternarMenu(false)));
+window.addEventListener('resize', () => { if (window.innerWidth >= 992) alternarMenu(false); });
+
+// ===================== AVISOS E CONFIRMAÇÕES NO CENTRO DA TELA =====================
+let _avisoTimer = null;
+
+function _overlayAviso() {
+    let el = document.getElementById('sico-aviso');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'sico-aviso';
+        el.className = 'sico-aviso-overlay';
+        el.setAttribute('role', 'alertdialog');
+        el.setAttribute('aria-modal', 'true');
+        document.body.appendChild(el);
+    }
+    clearTimeout(_avisoTimer);
+    if (el._teclas) document.removeEventListener('keydown', el._teclas);
+    return el;
+}
+
+function _fecharAviso(el, valor, resolver) {
+    clearTimeout(_avisoTimer);
+    if (el._teclas) document.removeEventListener('keydown', el._teclas);
+    el.classList.remove('show');
+    setTimeout(() => { if (!el.classList.contains('show')) el.innerHTML = ''; }, 250);
+    resolver(valor);
+}
+
+function _tipoAviso(texto) {
+    if (/^\s*(✅|🗑️|📋)/u.test(texto)) return 'sucesso';
+    if (/^\s*❌/u.test(texto) || /^\s*erro/i.test(texto)) return 'erro';
+    return 'info';
+}
+
+function mostrarAviso(mensagem) {
+    return new Promise(resolve => {
+        const bruto = String(mensagem === undefined || mensagem === null ? '' : mensagem);
+        const tipo = _tipoAviso(bruto);
+        const texto = bruto.replace(/^\s*(✅|❌|🗑️|📋|⚠️)\s*/u, '');
+        const icones = { sucesso: 'bx-check', erro: 'bx-x', info: 'bx-info-circle' };
+        const titulos = { sucesso: 'Tudo certo!', erro: 'Ops, algo deu errado', info: 'Aviso' };
+        const automatico = tipo === 'sucesso' && texto.length < 90 && !texto.includes('\n');
+
+        const el = _overlayAviso();
+        el.innerHTML = `
+            <div class="sico-aviso sico-aviso-${tipo}">
+                <div class="sico-aviso-icone"><i class='bx ${icones[tipo]}'></i></div>
+                <h5 class="sico-aviso-titulo">${titulos[tipo]}</h5>
+                <p class="sico-aviso-texto">${esc(texto)}</p>
+                ${automatico
+                    ? '<div class="sico-aviso-barra"></div>'
+                    : '<div class="sico-aviso-botoes"><button type="button" class="btn btn-primary px-4 fw-bold" data-ok>OK</button></div>'}
+            </div>`;
+        requestAnimationFrame(() => el.classList.add('show'));
+
+        const fechar = () => _fecharAviso(el, true, resolve);
+        el.onclick = ev => { if (ev.target === el || (ev.target.closest && ev.target.closest('[data-ok]'))) fechar(); };
+        el._teclas = ev => { if (ev.key === 'Escape' || ev.key === 'Enter') fechar(); };
+        document.addEventListener('keydown', el._teclas);
+        if (automatico) _avisoTimer = setTimeout(fechar, 2200);
+        else { const b = el.querySelector('[data-ok]'); if (b) b.focus(); }
+    });
+}
+
+function confirmar(mensagem, opcoes = {}) {
+    return new Promise(resolve => {
+        const el = _overlayAviso();
+        const perigo = !!opcoes.perigo;
+        el.innerHTML = `
+            <div class="sico-aviso sico-aviso-${perigo ? 'erro' : 'info'}">
+                <div class="sico-aviso-icone"><i class='bx ${perigo ? 'bx-trash' : 'bx-help-circle'}'></i></div>
+                <h5 class="sico-aviso-titulo">${esc(opcoes.titulo || 'Tem certeza?')}</h5>
+                <p class="sico-aviso-texto">${esc(mensagem)}</p>
+                <div class="sico-aviso-botoes">
+                    <button type="button" class="btn btn-light px-4" data-nao>Cancelar</button>
+                    <button type="button" class="btn ${perigo ? 'btn-danger' : 'btn-primary'} px-4 fw-bold" data-sim>${esc(opcoes.textoOk || 'Confirmar')}</button>
+                </div>
+            </div>`;
+        requestAnimationFrame(() => el.classList.add('show'));
+
+        const fechar = valor => _fecharAviso(el, valor, resolve);
+        el.onclick = ev => {
+            const alvo = ev.target.closest ? ev.target : null;
+            if (alvo && alvo.closest('[data-sim]')) fechar(true);
+            else if (ev.target === el || (alvo && alvo.closest('[data-nao]'))) fechar(false);
+        };
+        el._teclas = ev => { if (ev.key === 'Escape') fechar(false); };
+        document.addEventListener('keydown', el._teclas);
+        const b = el.querySelector('[data-nao]'); if (b) b.focus();
+    });
+}
+
+// Todos os alert() do sistema passam a usar o aviso moderno (sem travar a tela).
+globalThis.alert = function (mensagem) { mostrarAviso(mensagem); };
+
+// ===================== ESCOLHA DO TIPO DE OCORRÊNCIA =====================
+function atualizarEstadoPicker() {
+    const sel = document.getElementById('tipo');
+    const tipo = sel.value;
+    const escolhido = !!tipo;
+    document.getElementById('picker-tipos').classList.toggle('d-none', escolhido);
+    document.getElementById('tipo-escolhido').classList.toggle('d-none', !escolhido);
+    document.getElementById('rodape-ocorrencia').classList.toggle('d-none', !escolhido);
+    document.getElementById('btn-trocar-tipo').classList.toggle('d-none', !!sel.disabled);
+    const nomes = { 'Mecânica': 'Falha Mecânica (SOS)', 'Desvio': 'Desvio de Itinerário', 'Colisão': 'Colisão / Acidente', 'Atraso': 'Atraso de Partida', 'Segurança': 'Segurança / Vandalismo' };
+    document.getElementById('tipo-chip-texto').innerText = nomes[tipo] || tipo || '';
+}
+
+function selecionarTipo(tipo) {
+    document.getElementById('tipo').value = tipo;
+    ajustarFormulario();
+}
+
+function trocarTipo() {
+    document.getElementById('tipo').value = '';
+    ajustarFormulario();
+}
+
+// ===================== CALENDÁRIO E HORA =====================
+let _pickers = [];
+
+function iniciarPickers() {
+    if (typeof flatpickr === 'undefined') return;
+    const pt = (flatpickr.l10ns && flatpickr.l10ns.pt) ? flatpickr.l10ns.pt : 'default';
+    document.querySelectorAll('#form-ocorrencia input[type="date"], #form-ocorrencia input[type="time"]').forEach(el => {
+        const ehHora = el.type === 'time';
+        const fp = flatpickr(el, Object.assign({
+            locale: pt, altInput: true, static: true, disableMobile: true, allowInput: false,
+            onReady: function (sel, str, inst) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'fp-atalho';
+                b.textContent = ehHora ? 'Agora' : 'Hoje';
+                b.addEventListener('click', () => { inst.setDate(new Date(), true); inst.close(); });
+                inst.calendarContainer.appendChild(b);
+            }
+        }, ehHora
+            ? { enableTime: true, noCalendar: true, dateFormat: 'H:i', altFormat: 'H:i', time_24hr: true }
+            : { dateFormat: 'Y-m-d', altFormat: 'd/m/Y' }));
+        if (!fp || !fp.altInput) return;
+        fp.altInput.placeholder = ehHora ? 'hh:mm' : 'dd/mm/aaaa';
+        // o código do formulário marca campos como obrigatórios no campo original; repassa para o visível
+        Object.defineProperty(el, 'required', {
+            configurable: true,
+            get() { return fp.altInput.required; },
+            set(v) { fp.altInput.required = !!v; }
+        });
+        _pickers.push(fp);
+    });
+}
+
+function limparPickers() { _pickers.forEach(fp => fp.clear()); }
+function sincronizarPickers() { _pickers.forEach(fp => fp.setDate(fp.input.value || null, false)); }
+
+// ===================== CARREGANDO =====================
+function mostrarSkeleton() {
+    if (listaOcorrencias.length > 0) return;
+    const linha = '<tr class="skeleton-row"><td colspan="7"><div class="sk-line"></div></td></tr>';
+    document.getElementById('tabela-corpo').innerHTML = linha.repeat(5);
+}
+
+atualizarIconeTema();
+iniciarPickers();
 
 restaurarSessao();
