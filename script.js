@@ -1446,8 +1446,10 @@ function iniciarPickers() {
     const pt = (flatpickr.l10ns && flatpickr.l10ns.pt) ? flatpickr.l10ns.pt : 'default';
     document.querySelectorAll('#form-ocorrencia input[type="date"], #form-ocorrencia input[type="time"]').forEach(el => {
         const ehHora = el.type === 'time';
+        const eraObrigatorio = el.required;
+        el.required = false;
         const fp = flatpickr(el, Object.assign({
-            locale: pt, altInput: true, static: true, disableMobile: true, allowInput: false,
+            locale: pt, altInput: true, disableMobile: true, allowInput: false,
             onReady: function (sel, str, inst) {
                 const b = document.createElement('button');
                 b.type = 'button';
@@ -1461,7 +1463,7 @@ function iniciarPickers() {
             : { dateFormat: 'Y-m-d', altFormat: 'd/m/Y' }));
         if (!fp || !fp.altInput) return;
         fp.altInput.placeholder = ehHora ? 'hh:mm' : 'dd/mm/aaaa';
-        // o código do formulário marca campos como obrigatórios no campo original; repassa para o visível
+        fp.altInput.required = eraObrigatorio;
         Object.defineProperty(el, 'required', {
             configurable: true,
             get() { return fp.altInput.required; },
@@ -1474,7 +1476,6 @@ function iniciarPickers() {
 function limparPickers() { _pickers.forEach(fp => fp.clear()); }
 function sincronizarPickers() { _pickers.forEach(fp => fp.setDate(fp.input.value || null, false)); }
 
-// ===================== CARREGANDO =====================
 function mostrarSkeleton() {
     if (listaOcorrencias.length > 0) return;
     const linha = '<tr class="skeleton-row"><td colspan="7"><div class="sk-line"></div></td></tr>';
