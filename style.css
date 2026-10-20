@@ -493,3 +493,20 @@ span.flatpickr-weekday { color: var(--sc-muted); font-weight: 600; background: t
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* ===================== ANÁLISE ===================== */
+.grafico-area { position: relative; height: 300px; }
+.grafico-area-alta { position: relative; height: 340px; }
+.an-titulo {
+    font-size: .8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--sc-muted); margin-bottom: .75rem;
+}
+.an-kpi-rotulo {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--sc-muted); font-weight: 600;
+}
+.an-kpi-valor { font-size: 1.6rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+@media (max-width: 767.98px) {
+    .grafico-area, .grafico-area-alta { height: 260px; }
+}
