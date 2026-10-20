@@ -1457,7 +1457,7 @@ function iniciarPickers() {
                 inst.calendarContainer.appendChild(b);
             }
         }, ehHora
-            ? { enableTime: true, noCalendar: true, dateFormat: 'H:i', altFormat: 'H:i', time_24hr: true, minuteIncrement: 1 }
+            ? { enableTime: true, noCalendar: true, dateFormat: 'H:i', altFormat: 'H:i', time_24hr: true }
             : { dateFormat: 'Y-m-d', altFormat: 'd/m/Y' }));
         if (!fp || !fp.altInput) return;
         fp.altInput.placeholder = ehHora ? 'hh:mm' : 'dd/mm/aaaa';
@@ -1483,5 +1483,280 @@ function mostrarSkeleton() {
 
 atualizarIconeTema();
 iniciarPickers();
+
+// ===================== ANÁLISE (GRÁFICOS) =====================
+const ROTULO_TIPO = { 'Mecânica': 'Falha mecânica', 'Colisão': 'Colisão', 'Desvio': 'Desvio', 'Atraso': 'Atraso', 'Segurança': 'Segurança' };
+const NOME_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const CORES_GRAFICO = ['#8a2be2', '#5ad1ee', '#fbbf24', '#ff8593', '#4ade80', '#bf95ff', '#f97316', '#38bdf8', '#e879f9', '#a3e635'];
+const LIMITE_BALDES = 400;
+const graficosAnalise = {};
+
+// Data do evento (a que foi preenchida na ocorrência). Se não existir, usa a data do registro.
+function dataHoraEvento(o) {
+    const dataTxt = o.mecDataInicio || o.desvDataInicio || o.colDataInicio || o.atrDataInicio;
+    const horaTxt = o.mecHoraInicio || o.desvHoraInicio || o.colHoraInicio || o.atrHoraInicio;
+    if (dataTxt) {
+        const d = new Date(`${dataTxt}T${horaTxt || '00:00'}`);
+        if (!isNaN(d)) return d;
+    }
+    return new Date(o.dataCriacao);
+}
+
+function dataISO(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function intervaloPeriodo() {
+    const periodo = document.getElementById('an-periodo').value;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const fim = new Date(hoje);
+    fim.setHours(23, 59, 59, 999);
+
+    let ini;
+    if (periodo === 'hoje') {
+        ini = new Date(hoje);
+    } else if (periodo === '7') {
+        ini = new Date(hoje); ini.setDate(ini.getDate() - 6);
+    } else if (periodo === '30') {
+        ini = new Date(hoje); ini.setDate(ini.getDate() - 29);
+    } else if (periodo === 'ano') {
+        ini = new Date(hoje.getFullYear(), 0, 1);
+    } else {
+        const de = document.getElementById('an-de').value;
+        const ate = document.getElementById('an-ate').value;
+        if (!de || !ate) return null;
+        const inicio = new Date(`${de}T00:00`);
+        const fimPersonalizado = new Date(`${ate}T23:59:59.999`);
+        if (isNaN(inicio) || isNaN(fimPersonalizado) || fimPersonalizado < inicio) return null;
+        return { ini: inicio, fim: fimPersonalizado };
+    }
+    return { ini, fim };
+}
+
+function chaveBalde(d, gran) {
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    if (gran === 'hora') return String(d.getHours()).padStart(2, '0');
+    if (gran === 'dia') return `${ano}-${mes}-${dia}`;
+    if (gran === 'mes') return `${ano}-${mes}`;
+    return String(ano);
+}
+
+// Lista de todos os intervalos (horas, dias, meses ou anos) do período escolhido, mesmo os sem ocorrências.
+function baldesDoPeriodo(intervalo, gran) {
+    if (gran === 'hora') return Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'));
+    const baldes = [];
+    if (gran === 'ano') {
+        for (let a = intervalo.ini.getFullYear(); a <= intervalo.fim.getFullYear(); a++) baldes.push(String(a));
+        return baldes;
+    }
+    const cur = new Date(intervalo.ini.getFullYear(), intervalo.ini.getMonth(), intervalo.ini.getDate());
+    if (gran === 'mes') cur.setDate(1);
+    while (cur <= intervalo.fim && baldes.length <= LIMITE_BALDES + 1) {
+        baldes.push(chaveBalde(cur, gran));
+        if (gran === 'mes') cur.setMonth(cur.getMonth() + 1);
+        else cur.setDate(cur.getDate() + 1);
+    }
+    return baldes;
+}
+
+function rotuloBalde(chave, gran) {
+    if (gran === 'hora') return chave + 'h';
+    if (gran === 'dia') { const [, m, d] = chave.split('-'); return `${d}/${m}`; }
+    if (gran === 'mes') { const [a, m] = chave.split('-'); return `${NOME_MES[+m - 1]}/${a.slice(2)}`; }
+    return chave;
+}
+
+function ocorrenciasNoIntervalo(intervalo) {
+    const empresa = document.getElementById('an-empresa').value;
+    return listaOcorrencias.filter(o => {
+        const d = dataHoraEvento(o);
+        if (isNaN(d) || d < intervalo.ini || d > intervalo.fim) return false;
+        return !empresa || o.empresa === empresa;
+    });
+}
+
+function contarOcorrencias(valores) {
+    const mapa = {};
+    valores.forEach(v => { if (v) mapa[v] = (mapa[v] || 0) + 1; });
+    return mapa;
+}
+
+function topN(mapa, n) {
+    return Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function temaGrafico() {
+    const estilo = getComputedStyle(document.documentElement);
+    return {
+        texto: estilo.getPropertyValue('--sc-text').trim() || '#1b1a29',
+        muted: estilo.getPropertyValue('--sc-muted').trim() || '#5c5a73',
+        grade: estilo.getPropertyValue('--sc-border').trim() || '#dcd9ea'
+    };
+}
+
+function opcoesEixos(tema, horizontal) {
+    const opcoes = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { beginAtZero: true, ticks: { color: tema.muted, precision: 0 }, grid: { color: tema.grade } },
+            y: { beginAtZero: true, ticks: { color: tema.muted, precision: 0 }, grid: { color: tema.grade } }
+        }
+    };
+    if (horizontal) opcoes.indexAxis = 'y';
+    return opcoes;
+}
+
+function desenharGrafico(id, tipo, dados, opcoes) {
+    const canvas = document.getElementById(id);
+    if (!canvas || typeof Chart === 'undefined') return;
+    if (graficosAnalise[id]) graficosAnalise[id].destroy();
+    graficosAnalise[id] = new Chart(canvas, { type: tipo, data: dados, options: opcoes });
+}
+
+function preencherEmpresasAnalise() {
+    const sel = document.getElementById('an-empresa');
+    const empresas = frotaUsuario.empresas || [];
+    document.getElementById('an-empresa-wrap').classList.toggle('d-none', empresas.length <= 1);
+    const atual = sel.value;
+    sel.innerHTML = '';
+    addOption(sel, '', 'Todas as empresas');
+    empresas.forEach(e => addOption(sel, e.chave, e.nome));
+    sel.value = empresas.some(e => e.chave === atual) ? atual : '';
+}
+
+function renderizarAnalise() {
+    if (!document.getElementById('tela-analise')) return;
+    preencherEmpresasAnalise();
+
+    const periodo = document.getElementById('an-periodo').value;
+    document.querySelectorAll('.an-personalizado').forEach(el => el.classList.toggle('d-none', periodo !== 'personalizado'));
+
+    const aviso = document.getElementById('an-aviso');
+    const intervalo = intervaloPeriodo();
+    if (!intervalo) {
+        aviso.textContent = 'Escolha as datas De e Até. A data final não pode ser antes da inicial.';
+        aviso.classList.remove('d-none');
+        return;
+    }
+
+    const gran = document.getElementById('an-granularidade').value;
+    const baldes = baldesDoPeriodo(intervalo, gran);
+    if (baldes.length > LIMITE_BALDES) {
+        aviso.textContent = 'Período longo demais para agrupar por dia. Escolha um período menor ou agrupe por mês.';
+        aviso.classList.remove('d-none');
+        return;
+    }
+    aviso.classList.add('d-none');
+
+    const itens = ocorrenciasNoIntervalo(intervalo);
+    document.getElementById('an-vazio').classList.toggle('d-none', itens.length > 0);
+
+    // Cartões de resumo
+    const finalizadas = itens.filter(o => o.status === 'Finalizada').length;
+    const tipos = contarOcorrencias(itens.map(o => ROTULO_TIPO[o.tipo] || o.tipo || 'Outro'));
+    const topTipo = topN(tipos, 1)[0];
+    document.getElementById('an-kpi-total').textContent = itens.length;
+    document.getElementById('an-kpi-pendentes').textContent = itens.length - finalizadas;
+    document.getElementById('an-kpi-finalizadas').textContent = finalizadas;
+    document.getElementById('an-kpi-tipo').textContent = topTipo ? topTipo[0] : '—';
+
+    const tema = temaGrafico();
+
+    // Série no tempo
+    const serie = contarOcorrencias(itens.map(o => chaveBalde(dataHoraEvento(o), gran)));
+    const tipoSerie = (gran === 'dia' || gran === 'mes') ? 'line' : 'bar';
+    desenharGrafico('an-chart-serie', tipoSerie, {
+        labels: baldes.map(b => rotuloBalde(b, gran)),
+        datasets: [{
+            label: 'Ocorrências',
+            data: baldes.map(b => serie[b] || 0),
+            borderColor: '#8a2be2',
+            backgroundColor: tipoSerie === 'line' ? 'rgba(138, 43, 226, .18)' : '#8a2be2',
+            fill: tipoSerie === 'line',
+            tension: .3,
+            pointRadius: 3,
+            borderRadius: 6
+        }]
+    }, opcoesEixos(tema, false));
+
+    // Por tipo
+    desenharGrafico('an-chart-tipo', 'pie', {
+        labels: Object.keys(tipos),
+        datasets: [{ data: Object.values(tipos), backgroundColor: CORES_GRAFICO, borderWidth: 0 }]
+    }, {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: tema.texto } } }
+    });
+
+    // Por empresa
+    const empresas = contarOcorrencias(itens.map(o => (ESTILO_EMPRESA[o.empresa] || {}).curto || o.empresa || 'Sem empresa'));
+    desenharGrafico('an-chart-empresa', 'bar', {
+        labels: Object.keys(empresas),
+        datasets: [{ label: 'Ocorrências', data: Object.values(empresas), backgroundColor: CORES_GRAFICO, borderRadius: 8 }]
+    }, opcoesEixos(tema, false));
+
+    // Top 10 prefixos (sem "VÁRIOS" e sem vazios)
+    const prefixos = topN(contarOcorrencias(
+        itens.map(o => String(o.prefixo || '').trim()).filter(p => p && p !== 'VÁRIOS')
+    ), 10);
+    desenharGrafico('an-chart-prefixos', 'bar', {
+        labels: prefixos.map(p => p[0]),
+        datasets: [{ label: 'Ocorrências', data: prefixos.map(p => p[1]), backgroundColor: '#8a2be2', borderRadius: 6 }]
+    }, opcoesEixos(tema, true));
+
+    // Top 10 linhas (um Desvio pode ter várias linhas)
+    const linhas = topN(contarOcorrencias(
+        itens.flatMap(o => String(o.linha || '').split(',').map(s => s.trim()).filter(Boolean))
+    ), 10);
+    desenharGrafico('an-chart-linhas', 'bar', {
+        labels: linhas.map(l => l[0]),
+        datasets: [{ label: 'Ocorrências', data: linhas.map(l => l[1]), backgroundColor: '#5ad1ee', borderRadius: 6 }]
+    }, opcoesEixos(tema, true));
+}
+
+function mostrarTela(nome) {
+    const analise = nome === 'analise';
+    document.getElementById('tela-operacional').classList.toggle('d-none', analise);
+    document.getElementById('tela-analise').classList.toggle('d-none', !analise);
+    document.getElementById('nav-visao').classList.toggle('active', !analise);
+    document.getElementById('nav-analise').classList.toggle('active', analise);
+    alternarMenu(false);
+    if (analise) renderizarAnalise();
+    window.scrollTo(0, 0);
+}
+
+function iniciarAnalise() {
+    const hoje = new Date();
+    const inicio = new Date(hoje);
+    inicio.setDate(inicio.getDate() - 29);
+    document.getElementById('an-de').value = dataISO(inicio);
+    document.getElementById('an-ate').value = dataISO(hoje);
+
+    if (typeof flatpickr !== 'undefined') {
+        const pt = (flatpickr.l10ns && flatpickr.l10ns.pt) ? flatpickr.l10ns.pt : 'default';
+        ['an-de', 'an-ate'].forEach(id => {
+            flatpickr('#' + id, {
+                locale: pt, dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
+                disableMobile: true, static: true, onChange: () => renderizarAnalise()
+            });
+        });
+    }
+
+    // Ao trocar de tema, os gráficos são redesenhados com as cores certas
+    if (typeof MutationObserver !== 'undefined') {
+        new MutationObserver(() => {
+            const tela = document.getElementById('tela-analise');
+            if (tela && !tela.classList.contains('d-none')) renderizarAnalise();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+    }
+}
+
+iniciarAnalise();
 
 restaurarSessao();
